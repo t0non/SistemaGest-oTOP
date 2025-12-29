@@ -12,6 +12,7 @@ const serviceOrderSchema = z.object({
   status: z.enum(ServiceOrderStatus),
   finalValue: z.number().optional(),
   notes: z.string().optional(),
+  entryDate: z.string(), // Garante que a data está presente
 });
 
 type ActionResponse = {
@@ -55,6 +56,7 @@ export function addServiceOrder(
   const validation = serviceOrderSchema.safeParse(data);
 
   if (!validation.success) {
+    console.error(validation.error.flatten());
     return { success: false, message: 'Dados inválidos.' };
   }
   
@@ -67,7 +69,6 @@ export function addServiceOrder(
   const newServiceOrder: ServiceOrder = {
     id: `OS-${newIdNumber}`,
     ...validation.data,
-    entryDate: new Date().toISOString(),
   };
 
   serviceOrders.unshift(newServiceOrder);
@@ -88,12 +89,9 @@ export function updateServiceOrder(
 
   const existingData = serviceOrders[osIndex];
   
-  // This combines the existing data with the partial update data.
-  // entryDate is preserved. clientName could be updated if clientId changes, but we disable clientId change on edit form.
   const combinedData = { 
       ...existingData, 
       ...data, 
-      entryDate: existingData.entryDate,
       clientName: data.clientName || existingData.clientName,
       clientId: data.clientId || existingData.clientId
     };

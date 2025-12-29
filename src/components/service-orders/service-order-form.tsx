@@ -36,6 +36,7 @@ const serviceOrderFormSchema = z.object({
   status: z.enum(ServiceOrderStatus, { required_error: 'Selecione um status.' }),
   finalValue: z.string().optional(),
   notes: z.string().optional(),
+  entryDate: z.string().min(1, { message: "A data de entrada é obrigatória." }),
 });
 
 
@@ -55,6 +56,18 @@ export function ServiceOrderForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Garante que a data de entrada seja no formato YYYY-MM-DD
+  const getInitialDate = () => {
+    if (serviceOrder?.entryDate) {
+        // Tenta criar um objeto de data válido. Se falhar, usa a data atual
+        const d = new Date(serviceOrder.entryDate);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().split('T')[0];
+        }
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderFormSchema),
     defaultValues: {
@@ -64,6 +77,7 @@ export function ServiceOrderForm({
       status: serviceOrder?.status || 'Em Análise',
       notes: serviceOrder?.notes || '',
       finalValue: serviceOrder?.finalValue ? formatCurrency(String(serviceOrder.finalValue)) : '',
+      entryDate: getInitialDate(),
     },
   });
 
@@ -83,11 +97,15 @@ export function ServiceOrderForm({
         setIsSubmitting(false);
         return;
     }
+    
+    // Garante que a data seja salva como ISO string com fuso correto
+    const entryDate = new Date(values.entryDate + 'T12:00:00Z').toISOString();
 
     const dataToSave = {
         ...values,
         clientName: selectedClient.name,
         finalValue: values.finalValue ? unformatCurrency(values.finalValue) : undefined,
+        entryDate,
     };
     
     const result = serviceOrder?.id
@@ -206,6 +224,22 @@ export function ServiceOrderForm({
             )}
           />
         </div>
+         <FormField
+          control={form.control}
+          name="entryDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Entrada</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+               <FormDescription>
+                Esta data será usada para organizar a O.S e o Financeiro.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="notes"
