@@ -57,6 +57,30 @@ const statusColors: Record<ServiceOrderStatusType, string> = {
     'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20',
 };
 
+const PrintMenuItem = ({ order, client }: { order: ServiceOrder; client: Client | undefined }) => {
+  const componentRef = React.useRef(null);
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+    documentTitle: `OS-${order.id}`,
+  });
+
+  if (!client) return null;
+
+  return (
+    <>
+      <div style={{ display: 'none' }}>
+        <PrintableOrder ref={componentRef} order={order} client={client} />
+      </div>
+      <DropdownMenuItem onSelect={handlePrint}>
+        <Printer className="mr-2 h-4 w-4" />
+        Imprimir Recibo
+      </DropdownMenuItem>
+    </>
+  );
+};
+
+
 export function ServiceOrderList({
   initialServiceOrders,
   clients
@@ -67,46 +91,10 @@ export function ServiceOrderList({
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
   
-  const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
-  const printRef = React.useRef<HTMLDivElement>(null);
-  
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
-
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `OS-${osToPrint?.id?.slice(0, 6) || 'Recibo'}`,
-    onAfterPrint: () => setOsToPrint(null),
-    removeAfterPrint: true
-  });
-  
-  React.useEffect(() => {
-    if (osToPrint) {
-      const timeout = setTimeout(() => {
-        handlePrint();
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [osToPrint, handlePrint]);
-
-  const onPrint = (order: ServiceOrder) => {
-    const client = clients.find(c => c.id === order.clientId);
-    if (!client) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
-      return;
-    }
-    setOsToPrint(order);
-  }
-
-  React.useEffect(() => {
-    setEditingOS(null);
-    return () => {
-      document.body.style.pointerEvents = "";
-      document.body.removeAttribute("data-scroll-locked");
-    };
-  }, []);
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -157,18 +145,9 @@ export function ServiceOrderList({
   const handleOpenForm = (os: ServiceOrder | 'new') => {
       setEditingOS(os === 'new' ? {} as ServiceOrder : os);
   }
-  
-  const clientForPrint = osToPrint ? clients.find(c => c.id === osToPrint.clientId) : null;
 
   return (
     <>
-      <div className="hidden">
-        {osToPrint && clientForPrint && (
-            <PrintableOrder ref={printRef} order={osToPrint} client={clientForPrint} />
-        )}
-       </div>
-
-
       <div className="flex items-center justify-between gap-4 mb-4">
         <Input
           placeholder="Buscar por cliente, equipamento ou ID..."
@@ -197,45 +176,47 @@ export function ServiceOrderList({
           </TableHeader>
           <TableBody>
             {initialServiceOrders.length > 0 ? (
-              initialServiceOrders.map((os) => (
-                <TableRow key={os.id}>
-                  <TableCell className="font-bold">{os.id}</TableCell>
-                  <TableCell className="font-medium">{os.clientName}</TableCell>
-                  <TableCell className="hidden md:table-cell">{os.equipment}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{formatDate(os.entryDate)}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn('font-semibold', statusColors[os.status])}>
-                      {os.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleOpenForm(os)}}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => onPrint(os)}>
-                          <Printer className="mr-2 h-4 w-4" />
-                          Imprimir Recibo
-                        </DropdownMenuItem>
-                        {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
-                            <DropdownMenuItem onClick={() => handleFinalize(os)}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Lançar no Financeiro
-                            </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              initialServiceOrders.map((os) => {
+                const client = clients.find(c => c.id === os.clientId);
+                return (
+                  <TableRow key={os.id}>
+                    <TableCell className="font-bold">{os.id}</TableCell>
+                    <TableCell className="font-medium">{os.clientName}</TableCell>
+                    <TableCell className="hidden md:table-cell">{os.equipment}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{formatDate(os.entryDate)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={cn('font-semibold', statusColors[os.status])}>
+                        {os.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleOpenForm(os)}}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          
+                          <PrintMenuItem order={os} client={client} />
+
+                          {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
+                              <DropdownMenuItem onClick={() => handleFinalize(os)}>
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Lançar no Financeiro
+                              </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
@@ -304,5 +285,3 @@ export function ServiceOrderList({
     </>
   );
 }
-
-    
