@@ -27,16 +27,14 @@ import { addServiceOrder, updateServiceOrder } from '@/app/dashboard/service-ord
 import type { Client, ServiceOrder } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
 import { useState } from 'react';
+import { formatCurrency, unformatCurrency } from '@/lib/formatters';
 
 const serviceOrderFormSchema = z.object({
   clientId: z.string({ required_error: 'Selecione um cliente.' }),
   equipment: z.string().min(3, { message: 'O nome do equipamento é obrigatório.' }),
   problemDescription: z.string().optional(),
   status: z.enum(ServiceOrderStatus, { required_error: 'Selecione um status.' }),
-  finalValue: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
-    z.number().positive().optional()
-  ),
+  finalValue: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -63,13 +61,17 @@ export function ServiceOrderForm({
     problemDescription: serviceOrder?.problemDescription || '',
     status: serviceOrder?.status || 'Em Análise',
     notes: serviceOrder?.notes || '',
-    finalValue: serviceOrder?.finalValue || undefined,
+    finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
   };
 
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderFormSchema),
     defaultValues,
   });
+
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setValue('finalValue', formatCurrency(e.target.value));
+  };
 
   async function onSubmit(values: ServiceOrderFormValues) {
     setIsSubmitting(true);
@@ -87,6 +89,7 @@ export function ServiceOrderForm({
     const dataToSave = {
         ...values,
         clientName: selectedClient.name,
+        finalValue: values.finalValue ? unformatCurrency(values.finalValue) : undefined,
     };
     
     const result = serviceOrder
@@ -194,7 +197,12 @@ export function ServiceOrderForm({
               <FormItem>
                 <FormLabel>Valor Final (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="150.00" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.valueAsNumber)} />
+                  <Input 
+                    type="text" 
+                    placeholder="150,00" 
+                    {...field} 
+                    value={field.value ?? ''} 
+                    onChange={handleCurrencyChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

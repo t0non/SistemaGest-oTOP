@@ -18,14 +18,15 @@ import {useToast} from '@/hooks/use-toast';
 import {addClient, updateClient} from '@/app/dashboard/clients/actions';
 import type {Client} from '@/lib/definitions';
 import {useState} from 'react';
+import { formatCPF, formatPhone } from '@/lib/formatters';
 
 const clientFormSchema = z.object({
   name: z.string().min(3, {message: 'O nome deve ter pelo menos 3 caracteres.'}),
   cpf: z
     .string()
-    .min(11, {message: 'O CPF deve ter 11 caracteres.'})
+    .min(14, {message: 'O CPF deve ter 11 caracteres.'})
     .max(14, {message: 'O CPF deve ter no máximo 14 caracteres.'}),
-  phone: z.string().min(10, {message: 'O telefone deve ter pelo menos 10 caracteres.'}),
+  phone: z.string().min(14, {message: 'O telefone deve ter pelo menos 10 caracteres.'}),
   address: z.string().min(5, {message: 'O endereço deve ter pelo menos 5 caracteres.'}),
   notes: z.string().optional(),
 });
@@ -45,18 +46,33 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
       name: client?.name || '',
-      cpf: client?.cpf || '',
-      phone: client?.phone || '',
+      cpf: client?.cpf ? formatCPF(client.cpf) : '',
+      phone: client?.phone ? formatPhone(client.phone) : '',
       address: client?.address || '',
       notes: client?.notes || '',
     },
   });
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setValue('cpf', formatCPF(e.target.value));
+  };
+  
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setValue('phone', formatPhone(e.target.value));
+  };
+
   async function onSubmit(values: ClientFormValues) {
     setIsSubmitting(true);
+
+    const dataToSave = {
+      ...values,
+      cpf: values.cpf.replace(/\D/g, ''),
+      phone: values.phone.replace(/\D/g, ''),
+    };
+
     const result = client
-      ? await updateClient(client.id, values)
-      : await addClient(values);
+      ? await updateClient(client.id, dataToSave)
+      : await addClient(dataToSave);
 
     if (result.success) {
       toast({
@@ -98,7 +114,7 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
               <FormItem>
                 <FormLabel>CPF</FormLabel>
                 <FormControl>
-                  <Input placeholder="000.000.000-00" {...field} />
+                  <Input placeholder="000.000.000-00" {...field} onChange={handleCpfChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -111,7 +127,7 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
               <FormItem>
                 <FormLabel>Telefone / WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="(31) 99999-9999" {...field} />
+                  <Input placeholder="(31) 99999-9999" {...field} onChange={handlePhoneChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -70,20 +70,25 @@ export async function addServiceOrder(
 
 export async function updateServiceOrder(
   id: string,
-  data: z.infer<typeof serviceOrderSchema>
+  data: Partial<z.infer<typeof serviceOrderSchema>>
 ): Promise<ActionResponse> {
   await delay(1000);
-  const validation = serviceOrderSchema.safeParse(data);
-  if (!validation.success) {
-    return {success: false, message: 'Dados inválidos.'};
-  }
 
   const osIndex = serviceOrders.findIndex((o) => o.id === id);
   if (osIndex === -1) {
     return {success: false, message: 'Ordem de Serviço não encontrada.'};
   }
 
-  serviceOrders[osIndex] = {...serviceOrders[osIndex], ...validation.data};
+  const existingData = serviceOrders[osIndex];
+  const combinedData = { ...existingData, ...data, entryDate: existingData.entryDate };
+  
+  const validation = serviceOrderSchema.safeParse(combinedData);
+  if (!validation.success) {
+    console.log(validation.error.flatten());
+    return {success: false, message: 'Dados de atualização inválidos.'};
+  }
+
+  serviceOrders[osIndex] = validation.data;
   revalidatePath('/dashboard/service-orders');
   return {success: true, message: 'Ordem de Serviço atualizada com sucesso.'};
 }
