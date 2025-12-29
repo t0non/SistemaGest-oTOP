@@ -9,12 +9,16 @@ export type Client = {
   createdAt: string;
 };
 
+export const TransactionOwner = ['admin', 'pedro', 'split'] as const;
+export type TransactionOwner = (typeof TransactionOwner)[number];
+
 export type Transaction = {
   id: string;
   type: 'income' | 'expense';
   description: string;
   amount: number;
   date: string;
+  owner: TransactionOwner;
   clientId?: string;
   clientName?: string;
 };

@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getMonthlyFinancialSummary, getTransactions, deleteTransaction } from './actions';
 import StatCard from '@/components/dashboard/stat-card';
-import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2, User, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -40,6 +40,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { TransactionForm } from '@/components/finance/transaction-form';
 import type { Transaction } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
@@ -153,9 +159,15 @@ export default function FinancePage() {
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   };
+  
+  const ownerMap = {
+    admin: { icon: User, label: 'Admin', color: 'text-blue-500' },
+    pedro: { icon: User, label: 'Pedro', color: 'text-purple-500' },
+    split: { icon: Users, label: 'Dividido', color: 'text-orange-500' },
+  }
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -225,14 +237,27 @@ export default function FinancePage() {
                   </TableCell>
                 </TableRow>
               ) : transactions.length > 0 ? (
-                transactions.map((transaction) => (
+                transactions.map((transaction) => {
+                  const ownerInfo = ownerMap[transaction.owner] || ownerMap.admin;
+                  const OwnerIcon = ownerInfo.icon;
+                  return (
                   <TableRow key={transaction.id}>
                     <TableCell className="hidden whitespace-nowrap md:table-cell">{formatDate(transaction.date)}</TableCell>
                     <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="truncate">{transaction.description}</span>
-                        {transaction.clientName && <span className="text-xs text-muted-foreground">{transaction.clientName}</span>}
-                        <span className="text-sm text-muted-foreground md:hidden">{formatDate(transaction.date)}</span>
+                      <div className="flex items-center gap-2">
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <OwnerIcon className={cn("h-4 w-4 text-muted-foreground", ownerInfo.color)} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Responsável: {ownerInfo.label}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <div className="flex flex-col">
+                          <span className="truncate">{transaction.description}</span>
+                          {transaction.clientName && <span className="text-xs text-muted-foreground">{transaction.clientName}</span>}
+                          <span className="text-sm text-muted-foreground md:hidden">{formatDate(transaction.date)}</span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -284,7 +309,7 @@ export default function FinancePage() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                )})
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
@@ -331,6 +356,6 @@ export default function FinancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 }

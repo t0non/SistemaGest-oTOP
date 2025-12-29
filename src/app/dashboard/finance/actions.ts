@@ -1,6 +1,6 @@
 'use client';
 
-import type {Transaction} from '@/lib/definitions';
+import type {Transaction, TransactionOwner} from '@/lib/definitions';
 import {isSameMonth, parseISO} from 'date-fns';
 import { z } from 'zod';
 
@@ -8,7 +8,9 @@ const getTransactionsFromStorage = (): Transaction[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem('transactions');
   try {
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    // Adiciona valor default para transações antigas
+    return parsed.map((t: any) => ({ ...t, owner: t.owner || 'admin' }));
   } catch (e) {
     return [];
   }
@@ -24,6 +26,7 @@ const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   description: z.string().min(3, { message: 'A descrição é obrigatória.' }),
   amount: z.number().positive({ message: 'O valor deve ser maior que zero.' }),
+  owner: z.enum(['admin', 'pedro', 'split']),
   clientId: z.string().optional(),
   clientName: z.string().optional(),
 });
@@ -53,7 +56,12 @@ export function getMonthlyFinancialSummary(): {
 
   const expenses = monthlyTransactions
     .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => {
+        if (t.owner === 'split') {
+            return sum + t.amount / 2; // Apenas metade da despesa dividida conta no geral
+        }
+        return sum + t.amount;
+    }, 0);
 
   const profit = revenue - expenses;
 
@@ -66,6 +74,7 @@ export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success
     try {
         const validation = transactionSchema.safeParse(data);
         if (!validation.success) {
+          console.log(validation.error);
           return { success: false, message: 'Dados inválidos.' };
         }
         

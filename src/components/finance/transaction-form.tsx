@@ -25,8 +25,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { addTransaction, updateTransaction } from '@/app/dashboard/finance/actions';
 import { unformatCurrency, formatCurrency as formatCurrencyString } from '@/lib/formatters';
-import type { Client, Transaction } from '@/lib/definitions';
+import type { Client, Transaction, TransactionOwner } from '@/lib/definitions';
 import { Textarea } from '../ui/textarea';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const transactionFormSchema = z.object({
   type: z.enum(['income', 'expense'], {
@@ -36,6 +37,7 @@ const transactionFormSchema = z.object({
   amount: z.string().refine((val) => unformatCurrency(val) > 0, {
     message: 'O valor deve ser maior que zero.',
   }),
+  owner: z.enum(['admin', 'pedro', 'split'], { required_error: 'Selecione um responsável.' }),
   clientId: z.string().optional(),
 });
 
@@ -57,6 +59,7 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
       type: transaction?.type || 'expense',
       description: transaction?.description || '',
       amount: transaction?.amount ? formatCurrencyString(transaction.amount) : '',
+      owner: transaction?.owner || 'admin',
       clientId: transaction?.clientId || undefined,
     },
   });
@@ -99,6 +102,42 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="owner"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Responsável</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-row space-x-4"
+                >
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="admin" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Admin</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="pedro" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Pedro</FormLabel>
+                  </FormItem>
+                   <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="split" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Dividido</FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="type"
