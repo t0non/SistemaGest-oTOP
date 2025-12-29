@@ -46,6 +46,7 @@ import { ServiceOrderForm } from './service-order-form';
 import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { addTransaction } from '@/app/dashboard/finance/actions';
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
     'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
@@ -64,6 +65,7 @@ export function ServiceOrderList({
 }) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  const [isFinalizeAlertOpen, setIsFinalizeAlertOpen] = React.useState(false);
   const [selectedOS, setSelectedOS] = React.useState<ServiceOrder | null>(null);
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -99,18 +101,36 @@ export function ServiceOrderList({
   
   const handleFinalize = (os: ServiceOrder) => {
       setSelectedOS(os);
-      setIsAlertOpen(true);
+      setIsFinalizeAlertOpen(true);
   }
 
   const onFinalizeConfirm = async () => {
-    if (!selectedOS) return;
+    if (!selectedOS || !selectedOS.finalValue) return;
 
-    // In a real app, you would add logic here to create the transaction
-    toast({
-        title: "Lançamento Financeiro",
-        description: `Lançamento de R$ ${selectedOS.finalValue} para a OS ${selectedOS.id} criado. (simulado)`,
-    });
-    setIsAlertOpen(false);
+    const transactionData = {
+        type: 'income' as const,
+        description: `Recebimento OS ${selectedOS.id} - ${selectedOS.equipment}`,
+        amount: selectedOS.finalValue,
+        clientId: selectedOS.clientId,
+        clientName: selectedOS.clientName
+    };
+
+    const result = await addTransaction(transactionData);
+
+    if (result.success) {
+        toast({
+            title: "Sucesso!",
+            description: `Lançamento de R$ ${selectedOS.finalValue.toFixed(2)} para a OS ${selectedOS.id} criado.`,
+        });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Erro no lançamento",
+            description: result.message || "Não foi possível criar o lançamento financeiro.",
+        });
+    }
+
+    setIsFinalizeAlertOpen(false);
   }
 
   const formatDate = (dateString: string) => {
@@ -175,7 +195,7 @@ export function ServiceOrderList({
                           <Printer className="mr-2 h-4 w-4" />
                           Imprimir Via
                         </DropdownMenuItem>
-                        {os.status === 'Finalizado/Entregue' && os.finalValue && (
+                        {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
                             <DropdownMenuItem onClick={() => handleFinalize(os)}>
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Lançar no Financeiro
@@ -211,6 +231,7 @@ export function ServiceOrderList({
             </DialogDescription>
           </DialogHeader>
           <ServiceOrderForm
+            key={selectedOS?.id || 'new'}
             serviceOrder={selectedOS}
             clients={clients}
             onSuccess={() => handleFormOpenChange(false)}
@@ -219,7 +240,7 @@ export function ServiceOrderList({
       </Dialog>
       
       {/* Finalize Confirmation Alert */}
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <AlertDialog open={isFinalizeAlertOpen} onOpenChange={setIsFinalizeAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Lançar no Financeiro?</AlertDialogTitle>

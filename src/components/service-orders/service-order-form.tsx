@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addServiceOrder, updateServiceOrder } from '@/app/dashboard/service-orders/actions';
 import type { Client, ServiceOrder } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { formatCurrency, unformatCurrency } from '@/lib/formatters';
 
 const serviceOrderFormSchema = z.object({
@@ -63,20 +64,9 @@ export function ServiceOrderForm({
       problemDescription: serviceOrder?.problemDescription || '',
       status: serviceOrder?.status || 'Em Análise',
       notes: serviceOrder?.notes || '',
-      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
+      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : 'R$ 0,00',
     },
   });
-
-  useEffect(() => {
-    form.reset({
-      clientId: serviceOrder?.clientId || '',
-      equipment: serviceOrder?.equipment || '',
-      problemDescription: serviceOrder?.problemDescription || '',
-      status: serviceOrder?.status || 'Em Análise',
-      notes: serviceOrder?.notes || '',
-      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
-    });
-  }, [serviceOrder, form]);
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     form.setValue('finalValue', formatCurrency(e.target.value));
@@ -132,7 +122,7 @@ export function ServiceOrderForm({
               <FormLabel>Cliente</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger disabled={!!serviceOrder}>
                     <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
                 </FormControl>
@@ -208,9 +198,8 @@ export function ServiceOrderForm({
                 <FormControl>
                   <Input 
                     type="text" 
-                    placeholder="150,00" 
+                    placeholder="R$ 150,00" 
                     {...field} 
-                    value={field.value ?? ''} 
                     onChange={handleCurrencyChange} />
                 </FormControl>
                 <FormMessage />
