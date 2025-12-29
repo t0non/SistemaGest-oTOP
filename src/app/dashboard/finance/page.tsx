@@ -207,24 +207,24 @@ export default function FinancePage() {
               Acompanhe as entradas e saídas da sua loja.
             </p>
           </div>
-           <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm w-full sm:w-auto">
+           <div className="flex items-center gap-2 bg-card p-2 rounded-lg border shadow-sm w-full sm:w-auto">
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 font-bold px-1">DE</span>
+              <span className="text-[10px] text-muted-foreground font-bold px-1">DE</span>
               <input 
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="text-sm bg-transparent outline-none font-medium text-gray-700 cursor-pointer"
+                className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
               />
             </div>
-            <span className="text-gray-400">|</span>
+            <span className="text-border">|</span>
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 font-bold px-1">ATÉ</span>
+              <span className="text-[10px] text-muted-foreground font-bold px-1">ATÉ</span>
               <input 
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-sm bg-transparent outline-none font-medium text-gray-700 cursor-pointer"
+                className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
               />
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function FinancePage() {
         </div>
 
         {loading ? (
-            <Skeleton className="h-[350px] w-full" />
+            <Skeleton className="h-[410px] w-full" />
         ) : (
             <OverviewChart data={chartData} />
         )}
