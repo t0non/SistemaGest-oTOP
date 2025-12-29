@@ -63,14 +63,18 @@ export function ServiceOrderList({
   initialServiceOrders: ServiceOrder[];
   clients: Client[];
 }) {
-  const [isFinalizeAlertOpen, setIsFinalizeAlertOpen] = React.useState(false);
+  const [editingOS, setEditingOS] = React.useState<ServiceOrder | 'new' | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
-  const [editingOS, setEditingOS] = React.useState<ServiceOrder | null | 'new'>(null);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+
+  // Garante que o modal comece fechado no primeiro render
+  React.useEffect(() => {
+    setEditingOS(null);
+  }, []);
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -84,7 +88,6 @@ export function ServiceOrderList({
 
   const handleFinalize = (os: ServiceOrder) => {
       setOsToFinalize(os);
-      setIsFinalizeAlertOpen(true);
   }
 
   const onFinalizeConfirm = async () => {
@@ -112,20 +115,12 @@ export function ServiceOrderList({
             description: result.message || "Não foi possível criar o lançamento financeiro.",
         });
     }
-    setIsFinalizeAlertOpen(false);
     setOsToFinalize(null);
   }
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   };
-  
-  const isFormOpen = !!editingOS;
-  const handleFormOpenChange = (open: boolean) => {
-    if (!open) {
-      setEditingOS(null);
-    }
-  }
 
   return (
     <>
@@ -207,8 +202,15 @@ export function ServiceOrderList({
         </Table>
       </div>
 
-      {/* Form Dialog - Single instance */}
-      <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
+      {/* --- Modal Único para Edição/Criação --- */}
+      <Dialog 
+        open={!!editingOS} 
+        onOpenChange={(isOpen) => {
+            if (!isOpen) {
+                setEditingOS(null);
+            }
+        }}
+      >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline">
@@ -222,17 +224,17 @@ export function ServiceOrderList({
           </DialogHeader>
           {editingOS && (
             <ServiceOrderForm
-                key={editingOS === 'new' ? 'new' : editingOS.id}
+                key={editingOS === 'new' ? 'new-os' : editingOS.id}
                 serviceOrder={editingOS === 'new' ? null : editingOS}
                 clients={clients}
-                onSuccess={() => handleFormOpenChange(false)}
+                onSuccess={() => setEditingOS(null)}
             />
           )}
         </DialogContent>
       </Dialog>
       
-      {/* Finalize Confirmation Alert - Single instance */}
-      <AlertDialog open={isFinalizeAlertOpen} onOpenChange={setIsFinalizeAlertOpen}>
+      {/* --- Modal Único para Confirmação de Finalização --- */}
+      <AlertDialog open={!!osToFinalize} onOpenChange={(isOpen) => !isOpen && setOsToFinalize(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Lançar no Financeiro?</AlertDialogTitle>
