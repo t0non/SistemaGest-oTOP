@@ -1,11 +1,14 @@
+'use client';
 
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getServiceOrders } from './actions';
 import { ServiceOrderList } from '@/components/service-orders/service-order-list';
 import { getClients } from '../clients/actions';
+import { useEffect, useState } from 'react';
+import type { Client, ServiceOrder } from '@/lib/definitions';
 
-export default async function ServiceOrdersPage({
+export default function ServiceOrdersPage({
   searchParams,
 }: {
   searchParams?: {
@@ -14,9 +17,23 @@ export default async function ServiceOrdersPage({
   };
 }) {
   const query = searchParams?.query || '';
-  // In a real app, these would be optimized to avoid fetching all clients
-  const serviceOrders = await getServiceOrders(query);
-  const clients = await getClients('');
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      const [soData, clientData] = await Promise.all([
+        getServiceOrders(query),
+        getClients(''),
+      ]);
+      setServiceOrders(soData);
+      setClients(clientData);
+      setLoading(false);
+    }
+    fetchData();
+  }, [query]);
 
   return (
     <div className="space-y-6">
@@ -27,7 +44,11 @@ export default async function ServiceOrdersPage({
         </p>
       </div>
       <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-        <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />
+        {loading ? (
+          <Skeleton className="h-96 w-full" />
+        ) : (
+          <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />
+        )}
       </Suspense>
     </div>
   );
