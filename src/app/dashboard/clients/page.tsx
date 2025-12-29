@@ -6,29 +6,42 @@ import { ClientList } from '@/components/clients/client-list';
 import { getClients } from './actions';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Client } from '@/lib/definitions';
 
 function ClientsPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('query') || '';
-  const [clients, setClients] = React.useState(() => getClients(query));
+  const [clients, setClients] = React.useState<Client[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchClients = React.useCallback(() => {
+    setLoading(true);
+    const clientData = getClients(query);
+    setClients(clientData);
+    setLoading(false);
+  }, [query]);
+
 
   // Listen for storage changes to update UI
   React.useEffect(() => {
+    fetchClients();
+    
     const handleStorageChange = () => {
-      setClients(getClients(query));
+      fetchClients();
     };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('local-storage-changed', handleStorageChange);
     };
-  }, [query]);
-
-  // Update when query changes
-  React.useEffect(() => {
-    setClients(getClients(query));
-  }, [query]);
+  }, [query, fetchClients]);
+  
+  if (loading) {
+    return <Skeleton className="h-96 w-full" />;
+  }
 
   return <ClientList initialClients={clients} />;
 }
