@@ -43,11 +43,12 @@ import { useReactToPrint } from 'react-to-print';
 
 import type { ServiceOrder, ServiceOrderStatus as ServiceOrderStatusType, Client } from '@/lib/definitions';
 import { ServiceOrderForm } from './service-order-form';
-import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle, FileText } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { addTransaction } from '@/app/dashboard/finance/actions';
 import { PrintableOrder } from './printable-order';
+import { PrintableQuote } from './printable-quote';
 
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
@@ -68,35 +69,47 @@ export function ServiceOrderList({
 }) {
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
-  const [orderToPrint, setOrderToPrint] = React.useState<ServiceOrder>(initialServiceOrders[0] || {} as ServiceOrder);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
   
-  const printRef = React.useRef<HTMLDivElement>(null);
-
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Recibo-${orderToPrint?.id || 'OS'}`,
-    onPrintError: (error) => console.error("Erro interno impressão:", error),
+  // === LÓGICA DO RECIBO ===
+  const [reciboData, setReciboData] = React.useState<any>(initialServiceOrders[0] || {});
+  const reciboRef = React.useRef<HTMLDivElement>(null);
+  
+  const printRecibo = useReactToPrint({
+    contentRef: reciboRef,
+    documentTitle: `Recibo-${reciboData?.id}`,
+    onPrintError: (error) => console.error("Erro impressão recibo:", error),
   });
 
-  const dispararImpressao = (order: ServiceOrder, e?: React.MouseEvent) => {
+  const gerarRecibo = (order: any, e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    
-    setOrderToPrint(order);
+    setReciboData(order);
+    setTimeout(() => { if (reciboRef.current) printRecibo(); }, 100);
+  };
 
+  // === NOVA LÓGICA DO ORÇAMENTO ===
+  const [orcamentoData, setOrcamentoData] = React.useState<any>(initialServiceOrders[0] || {});
+  const orcamentoRef = React.useRef<HTMLDivElement>(null);
+
+  const printOrcamento = useReactToPrint({
+    contentRef: orcamentoRef,
+    documentTitle: `Orcamento-${orcamentoData?.id}`,
+    onPrintError: (error) => console.error("Erro impressão orçamento:", error),
+  });
+
+  const gerarOrcamento = (order: any, e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setOrcamentoData(order);
     setTimeout(() => {
-      if (printRef.current) {
-        handlePrint();
-      } else {
-        console.error("ERRO: O componente de recibo não foi encontrado no DOM.");
+      if (orcamentoRef.current) {
+        printOrcamento();
       }
     }, 100);
   };
-
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -210,11 +223,20 @@ export function ServiceOrderList({
 
                            <DropdownMenuItem
                             onSelect={(e) => e.preventDefault()}
-                            onClick={(e) => dispararImpressao(orderWithCpf, e)}
+                            onClick={(e) => gerarRecibo(orderWithCpf, e)}
                             className="cursor-pointer"
                            >
                               <Printer className="mr-2 h-4 w-4" />
                               Imprimir Recibo
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={(e) => gerarOrcamento(orderWithCpf, e)}
+                            className="cursor-pointer"
+                           >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Gerar Orçamento
                           </DropdownMenuItem>
 
                           {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
@@ -291,11 +313,13 @@ export function ServiceOrderList({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* --- ÁREA DOS COMPONENTES OFF-SCREEN (INVISÍVEIS) --- */}
       <div style={{ position: 'fixed', top: '-9999px', left: '-9999px' }}>
-         <PrintableOrder 
-            ref={printRef} 
-            data={orderToPrint} 
-         />
+         {/* 1. O Recibo Antigo */}
+         <PrintableOrder ref={reciboRef} data={reciboData} />
+
+         {/* 2. O Novo Orçamento (Separado) */}
+         <PrintableQuote ref={orcamentoRef} data={orcamentoData} />
       </div>
     </>
   );
