@@ -5,7 +5,7 @@ import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {DollarSign, TrendingUp, Users, User, Briefcase} from 'lucide-react';
+import {DollarSign, TrendingUp, Users, User, Briefcase, UserCheck} from 'lucide-react';
 import { getTransactions } from './finance/actions';
 import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -83,7 +83,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title="Faturamento Bruto"
           value={formatCurrency(summary.revenue)}
@@ -110,6 +110,12 @@ export default function DashboardPage() {
           icon={Briefcase}
           description="Lucro líquido do sócio"
            positive={summary.pedroProfit >= 0}
+        />
+        <StatCard
+            title="Por Sócio (50%)"
+            value={formatCurrency(summary.profit / 2)}
+            icon={UserCheck}
+            description="Metade do lucro líquido"
         />
         <StatCard
           title="Novos Clientes"
