@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getMonthlyFinancialSummary, getTransactions, deleteTransaction } from './actions';
 import StatCard from '@/components/dashboard/stat-card';
@@ -52,6 +52,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getClients } from '../clients/actions';
 import type { Client } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OverviewChart } from '@/components/dashboard/overview-chart';
 
 interface FinancialSummary {
   revenue: number;
@@ -69,6 +70,8 @@ export default function FinancePage() {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
 
+  const [startDate, setStartDate] = React.useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = React.useState(new Date().toISOString().split('T')[0]);
 
   const { toast } = useToast();
 
@@ -106,6 +109,34 @@ export default function FinancePage() {
     };
 
   }, [fetchData]);
+  
+  const chartData = React.useMemo(() => {
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T23:59:59');
+
+    const filtered = transactions.filter(t => {
+      const transactionDate = parseISO(t.date);
+      return transactionDate >= start && transactionDate <= end;
+    });
+
+    const grouped: Record<string, { income: number, expense: number }> = {};
+
+    filtered.forEach(t => {
+      const dayKey = format(parseISO(t.date), 'yyyy-MM-dd');
+
+      if (!grouped[dayKey]) grouped[dayKey] = { income: 0, expense: 0 };
+
+      if (t.type === 'income') grouped[dayKey].income += Number(t.amount);
+      if (t.type === 'expense') grouped[dayKey].expense += Number(t.amount);
+    });
+
+    return Object.keys(grouped).map(key => ({
+      name: key,
+      income: grouped[key].income,
+      expense: grouped[key].expense
+    })).sort((a,b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+
+  }, [transactions, startDate, endDate]);
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
@@ -176,6 +207,27 @@ export default function FinancePage() {
               Acompanhe as entradas e saídas da sua loja.
             </p>
           </div>
+           <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm w-full sm:w-auto">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-500 font-bold px-1">DE</span>
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-sm bg-transparent outline-none font-medium text-gray-700 cursor-pointer"
+              />
+            </div>
+            <span className="text-gray-400">|</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-500 font-bold px-1">ATÉ</span>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="text-sm bg-transparent outline-none font-medium text-gray-700 cursor-pointer"
+              />
+            </div>
+          </div>
           <Button onClick={openFormForNew} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Nova Movimentação
@@ -183,38 +235,9 @@ export default function FinancePage() {
         </div>
 
         {loading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Skeleton className="h-28" />
-                <Skeleton className="h-28" />
-                <Skeleton className="h-28" />
-                <Skeleton className="h-28" />
-            </div>
+            <Skeleton className="h-[350px] w-full" />
         ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-                title="Entradas no Mês"
-                value={formatCurrency(summary.revenue)}
-                icon={ArrowUp}
-                positive={true}
-            />
-            <StatCard
-                title="Saídas no Mês"
-                value={formatCurrency(summary.expenses)}
-                icon={ArrowDown}
-                positive={false}
-            />
-             <StatCard
-                title="Serviços/Vendas no Mês"
-                value={String(summary.productsSold)}
-                icon={Package}
-            />
-            <StatCard
-                title="Saldo Líquido"
-                value={formatCurrency(summary.profit)}
-                icon={DollarSign}
-                positive={summary.profit >= 0}
-            />
-            </div>
+            <OverviewChart data={chartData} />
         )}
 
 

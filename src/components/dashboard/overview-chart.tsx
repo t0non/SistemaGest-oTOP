@@ -1,111 +1,100 @@
 
 'use client';
 
-import {Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend} from 'recharts';
-import {format} from 'date-fns';
-import {ptBR} from 'date-fns/locale';
-
-import {ChartContainer, ChartTooltipContent, type ChartConfig} from '@/components/ui/chart';
-import type {Transaction} from '@/lib/definitions';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+} from 'recharts';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface OverviewChartProps {
-  data: Transaction[];
+  data: { name: string, income: number, expense: number }[];
 }
 
-const chartConfig = {
-  income: {
-    label: 'Entradas',
-    color: 'hsl(var(--chart-1))',
-  },
-  expense: {
-    label: 'Saídas',
-    color: 'hsl(var(--chart-2))',
-  },
-} satisfies ChartConfig;
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const formattedLabel = format(parseISO(label), "eeee, dd 'de' MMMM", { locale: ptBR });
+    return (
+      <div className="rounded-lg border bg-background p-2 shadow-sm">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col space-y-1">
+            <span className="text-[0.70rem] uppercase text-muted-foreground">
+              Entradas
+            </span>
+            <span className="font-bold text-green-600">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payload[0].value)}
+            </span>
+          </div>
+          <div className="flex flex-col space-y-1">
+            <span className="text-[0.70rem] uppercase text-muted-foreground">
+              Saídas
+            </span>
+            <span className="font-bold text-red-600">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payload[1].value)}
+            </span>
+          </div>
+        </div>
+         <p className="text-sm font-medium mt-2 pt-2 border-t text-center text-muted-foreground capitalize">{formattedLabel}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
-export function OverviewChart({data}: OverviewChartProps) {
-  const processDataForChart = (transactions: Transaction[]) => {
-    const dailyData: {[key: string]: {income: number; expense: number}} = {};
-
-    transactions.forEach((transaction) => {
-      const day = format(new Date(transaction.date), 'yyyy-MM-dd');
-      if (!dailyData[day]) {
-        dailyData[day] = {income: 0, expense: 0};
-      }
-      if (transaction.type === 'income') {
-        dailyData[day].income += transaction.amount;
-      } else {
-        dailyData[day].expense += transaction.amount;
-      }
-    });
-
-    return Object.keys(dailyData)
-      .map((day) => ({
-        name: new Date(day),
-        income: dailyData[day].income,
-        expense: dailyData[day].expense,
-      }))
-      .sort((a, b) => a.name.getTime() - b.name.getTime());
-  };
-
-  const chartData = processDataForChart(data);
+export function OverviewChart({ data }: OverviewChartProps) {
+  
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-[410px] bg-card rounded-xl border flex items-center justify-center">
+        <p className="text-muted-foreground">Sem movimentações no período selecionado.</p>
+      </div>
+    );
+  }
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-      <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={chartData}>
-          <XAxis
-            dataKey="name"
-            stroke="hsl(var(--muted-foreground))"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(date) => format(date, 'dd/MMM', {locale: ptBR})}
-          />
-          <YAxis
-            stroke="hsl(var(--muted-foreground))"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => `R$${value}`}
-          />
-          <Tooltip
-            cursor={{fill: 'hsl(var(--accent) / 0.2)'}}
-            content={
-              <ChartTooltipContent
-                labelFormatter={(label, payload) => {
-                    if (payload && payload.length > 0) {
-                        return format(new Date(payload[0].payload.name), "eeee, dd 'de' MMMM", { locale: ptBR });
-                    }
-                    return label;
-                }}
-                formatter={(value, name) => (
-                  <div className="flex flex-col">
-                    <span className="capitalize text-muted-foreground">
-                      {name === 'income' ? 'Entrada' : 'Saída'}
-                    </span>
-                    <span>
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(value as number)}
-                    </span>
-                  </div>
-                )}
-              />
-            }
-          />
-          <Legend
-            formatter={(value) => (
-              <span className="capitalize text-muted-foreground">
-                {value === 'income' ? 'Entradas' : 'Saídas'}
-              </span>
-            )}
-          />
-          <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
+    <div className="w-full bg-card rounded-xl border p-6">
+       <div className="mb-4 flex justify-between items-end">
+        <div>
+          <h3 className="text-lg font-bold font-headline text-card-foreground">Fluxo de Caixa</h3>
+          <p className="text-sm text-muted-foreground">Acompanhamento de entradas e saídas no período.</p>
+        </div>
+      </div>
+      <div className="h-[350px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#16a34a" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#dc2626" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+              dy={10}
+              minTickGap={30}
+              tickFormatter={(str) => format(parseISO(str), "dd/MM")}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+              tickFormatter={(value) => `R$${value/1000}k`}
+              domain={[0, 'dataMax + 100']}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="income" name="Entradas" stroke="#16a34a" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+            <Area type="monotone" dataKey="expense" name="Saídas" stroke="#dc2626" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
