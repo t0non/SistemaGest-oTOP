@@ -23,9 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { addTransaction } from '@/app/dashboard/finance/actions';
-import { unformatCurrency, formatCurrency } from '@/lib/formatters';
-import type { Client } from '@/lib/definitions';
+import { addTransaction, updateTransaction } from '@/app/dashboard/finance/actions';
+import { unformatCurrency, formatCurrency as formatCurrencyString } from '@/lib/formatters';
+import type { Client, Transaction } from '@/lib/definitions';
 import { Textarea } from '../ui/textarea';
 
 const transactionFormSchema = z.object({
@@ -42,26 +42,27 @@ const transactionFormSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 interface TransactionFormProps {
+  transaction?: Transaction | null;
   clients: Client[];
   onSuccess: () => void;
 }
 
-export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
+export function TransactionForm({ transaction, clients, onSuccess }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      type: 'expense',
-      description: '',
-      amount: '',
-      clientId: undefined, // Use undefined for placeholder to show
+      type: transaction?.type || 'expense',
+      description: transaction?.description || '',
+      amount: transaction?.amount ? formatCurrencyString(transaction.amount) : '',
+      clientId: transaction?.clientId || undefined,
     },
   });
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    form.setValue('amount', formatCurrency(e.target.value));
+    form.setValue('amount', formatCurrencyString(e.target.value));
   };
   
   async function onSubmit(values: TransactionFormValues) {
@@ -75,12 +76,14 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
       clientName: client?.name,
     };
 
-    const result = addTransaction(dataToSave);
+    const result = transaction?.id 
+        ? updateTransaction(transaction.id, dataToSave)
+        : addTransaction(dataToSave);
 
     if (result.success) {
       toast({
         title: 'Sucesso!',
-        description: 'Movimentação adicionada com sucesso.',
+        description: `Movimentação ${transaction?.id ? 'atualizada' : 'adicionada'} com sucesso.`,
       });
       onSuccess();
     } else {
@@ -173,7 +176,7 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
           )}
         />
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Salvando...' : 'Adicionar Movimentação'}
+          {isSubmitting ? 'Salvando...' : transaction?.id ? 'Salvar Alterações' : 'Adicionar Movimentação'}
         </Button>
       </form>
     </Form>

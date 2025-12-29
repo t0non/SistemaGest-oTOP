@@ -2,6 +2,7 @@
 
 import type {Transaction} from '@/lib/definitions';
 import {isSameMonth, parseISO} from 'date-fns';
+import { z } from 'zod';
 
 const getTransactionsFromStorage = (): Transaction[] => {
   if (typeof window === 'undefined') return [];
@@ -18,6 +19,14 @@ const saveTransactionsToStorage = (transactions: Transaction[]) => {
   localStorage.setItem('transactions', JSON.stringify(transactions));
   window.dispatchEvent(new Event('local-storage-changed')); // Notify other components
 };
+
+const transactionSchema = z.object({
+  type: z.enum(['income', 'expense']),
+  description: z.string().min(3, { message: 'A descrição é obrigatória.' }),
+  amount: z.number().positive({ message: 'O valor deve ser maior que zero.' }),
+  clientId: z.string().optional(),
+  clientName: z.string().optional(),
+});
 
 
 export function getTransactions(): Transaction[] {
@@ -55,16 +64,65 @@ export function getMonthlyFinancialSummary(): {
 
 export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {
     try {
+        const validation = transactionSchema.safeParse(data);
+        if (!validation.success) {
+          return { success: false, message: 'Dados inválidos.' };
+        }
+        
         let transactions = getTransactionsFromStorage();
         const newTransaction: Transaction = {
             id: `t-${Date.now()}`,
             date: new Date().toISOString(),
-            ...data
+            ...validation.data
         };
         transactions.unshift(newTransaction);
         saveTransactionsToStorage(transactions);
         return { success: true, message: "Transação adicionada com sucesso." };
     } catch(e) {
         return { success: false, message: "Ocorreu um erro ao adicionar a transação." };
+    }
+}
+
+export function updateTransaction(id: string, data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {
+    try {
+        const validation = transactionSchema.safeParse(data);
+        if (!validation.success) {
+            return { success: false, message: 'Dados de atualização inválidos.' };
+        }
+        
+        let transactions = getTransactionsFromStorage();
+        const transactionIndex = transactions.findIndex(t => t.id === id);
+
+        if (transactionIndex === -1) {
+            return { success: false, message: 'Transação não encontrada.' };
+        }
+
+        const updatedTransaction = {
+            ...transactions[transactionIndex],
+            ...validation.data
+        };
+        
+        transactions[transactionIndex] = updatedTransaction;
+        saveTransactionsToStorage(transactions);
+        return { success: true, message: "Transação atualizada com sucesso." };
+
+    } catch (e) {
+        return { success: false, message: "Ocorreu um erro ao atualizar a transação." };
+    }
+}
+
+export function deleteTransaction(id: string): {success: boolean; message?: string;} {
+    try {
+        let transactions = getTransactionsFromStorage();
+        const updatedTransactions = transactions.filter(t => t.id !== id);
+
+        if (transactions.length === updatedTransactions.length) {
+            return { success: false, message: 'Transação não encontrada.' };
+        }
+
+        saveTransactionsToStorage(updatedTransactions);
+        return { success: true, message: "Transação excluída com sucesso." };
+    } catch (e) {
+        return { success: false, message: "Ocorreu um erro ao excluir a transação." };
     }
 }

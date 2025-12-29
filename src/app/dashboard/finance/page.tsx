@@ -13,9 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getMonthlyFinancialSummary, getTransactions } from './actions';
+import { getMonthlyFinancialSummary, getTransactions, deleteTransaction } from './actions';
 import StatCard from '@/components/dashboard/stat-card';
-import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +24,22 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TransactionForm } from '@/components/finance/transaction-form';
 import type { Transaction } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +60,9 @@ export default function FinancePage() {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
+
 
   const { toast } = useToast();
 
@@ -71,10 +90,9 @@ export default function FinancePage() {
   React.useEffect(() => {
     fetchData();
     
-    // Listen for storage changes to update UI
     const handleStorageChange = () => fetchData();
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
+    window.addEventListener('local-storage-changed', handleStorageChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -83,9 +101,47 @@ export default function FinancePage() {
 
   }, [fetchData]);
 
-  const handleSuccess = () => {
+  const handleFormSuccess = () => {
     setIsFormOpen(false);
-    fetchData(); // Refresh data after a new transaction is added
+    setSelectedTransaction(null);
+    fetchData();
+  };
+  
+  const openFormForNew = () => {
+    setSelectedTransaction(null);
+    setIsFormOpen(true);
+  };
+
+  const openFormForEdit = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsFormOpen(true);
+  };
+  
+  const openDeleteAlert = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsAlertOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!selectedTransaction) return;
+
+    const result = deleteTransaction(selectedTransaction.id);
+
+    if (result.success) {
+      toast({
+        title: 'Sucesso!',
+        description: 'Transação excluída com sucesso.',
+      });
+      fetchData();
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Erro!',
+        description: result.message || 'Não foi possível excluir a transação.',
+      });
+    }
+    setIsAlertOpen(false);
+    setSelectedTransaction(null);
   };
 
   const formatCurrency = (value: number) =>
@@ -108,13 +164,12 @@ export default function FinancePage() {
               Acompanhe as entradas e saídas da sua loja.
             </p>
           </div>
-          <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+          <Button onClick={openFormForNew} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Nova Movimentação
           </Button>
         </div>
 
-        {/* Resumo Cards */}
         {loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Skeleton className="h-28" />
@@ -159,12 +214,13 @@ export default function FinancePage() {
                 <TableHead>Descrição</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
@@ -204,11 +260,34 @@ export default function FinancePage() {
                       {transaction.type === 'income' ? '+' : '-'}
                       {formatCurrency(transaction.amount)}
                     </TableCell>
+                    <TableCell>
+                       <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openFormForEdit(transaction)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => openDeleteAlert(transaction)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     Nenhuma transação encontrada.
                   </TableCell>
                 </TableRow>
@@ -218,20 +297,40 @@ export default function FinancePage() {
         </div>
       </div>
       
-      {/* Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedTransaction(null); setIsFormOpen(false); } else { setIsFormOpen(true); }}}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-headline">
-              Nova Movimentação
+              {selectedTransaction ? 'Editar Movimentação' : 'Nova Movimentação'}
             </DialogTitle>
             <DialogDescription>
-              Lance uma nova entrada ou saída no seu caixa.
+              {selectedTransaction ? 'Atualize os dados da movimentação.' : 'Lance uma nova entrada ou saída no seu caixa.'}
             </DialogDescription>
           </DialogHeader>
-          <TransactionForm clients={clients} onSuccess={handleSuccess} />
+          <TransactionForm 
+            clients={clients} 
+            onSuccess={handleFormSuccess} 
+            transaction={selectedTransaction}
+          />
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Isso excluirá permanentemente a transação <span className='font-bold'>{selectedTransaction?.description}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
