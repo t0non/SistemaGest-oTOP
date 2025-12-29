@@ -1,14 +1,16 @@
+
 "use client";
 
 import {usePathname} from 'next/navigation';
 import Link from 'next/link';
-import {LayoutDashboard, Users, PiggyBank} from 'lucide-react';
+import {LayoutDashboard, Users, PiggyBank, Wrench} from 'lucide-react';
 
 import {SidebarMenu, SidebarMenuItem, SidebarMenuButton} from '@/components/ui/sidebar';
 
 const navItems = [
   {href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard},
   {href: '/dashboard/clients', label: 'Clientes', icon: Users},
+  {href: '/dashboard/service-orders', label: 'Ordens de Serviço', icon: Wrench},
   {href: '/dashboard/finance', label: 'Financeiro', icon: PiggyBank},
 ];
 

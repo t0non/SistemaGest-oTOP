@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,7 +42,7 @@ import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 import type {Client} from '@/lib/definitions';
 import {ClientForm} from './client-form';
 import {deleteClient} from '@/app/dashboard/clients/actions';
-import {MoreHorizontal, PlusCircle, Trash2, Edit} from 'lucide-react';
+import {MoreHorizontal, PlusCircle, Trash2, Edit, MessageSquare} from 'lucide-react';
 import {Skeleton} from '../ui/skeleton';
 
 export function ClientList({initialClients}: {initialClients: Client[]}) {
@@ -79,6 +80,11 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
     setSelectedClient(client);
     setIsAlertOpen(true);
   };
+  
+  const openWhatsApp = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+  }
 
   const handleDelete = async () => {
     if (!selectedClient) return;
@@ -136,7 +142,10 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
                     {client.cpf}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {client.phone}
+                    <Button variant="ghost" size="sm" onClick={() => openWhatsApp(client.phone)}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        {client.phone}
+                    </Button>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
