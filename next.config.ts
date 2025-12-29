@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Adicionado para permitir requisições de origens diferentes no ambiente de desenvolvimento em nuvem.
+    allowedDevOrigins: [
+      '6000-firebase-studio-1767009620080.cluster-udxxdyopu5c7cwhhtg6mmadhvs.cloudworkstations.dev',
+    ],
+  },
 };
 
 export default nextConfig;
