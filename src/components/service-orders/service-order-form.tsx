@@ -64,7 +64,7 @@ export function ServiceOrderForm({
       problemDescription: serviceOrder?.problemDescription || '',
       status: serviceOrder?.status || 'Em Análise',
       notes: serviceOrder?.notes || '',
-      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : 'R$ 0,00',
+      finalValue: serviceOrder?.finalValue ? formatCurrency(String(serviceOrder.finalValue)) : '',
     },
   });
 
@@ -91,14 +91,14 @@ export function ServiceOrderForm({
         finalValue: values.finalValue ? unformatCurrency(values.finalValue) : undefined,
     };
     
-    const result = serviceOrder
+    const result = serviceOrder?.id
       ? await updateServiceOrder(serviceOrder.id, dataToSave)
       : await addServiceOrder(dataToSave);
 
     if (result.success) {
       toast({
         title: 'Sucesso!',
-        description: `Ordem de Serviço ${serviceOrder ? 'atualizada' : 'adicionada'} com sucesso.`,
+        description: `Ordem de Serviço ${serviceOrder?.id ? 'atualizada' : 'adicionada'} com sucesso.`,
       });
       onSuccess();
     } else {
@@ -120,9 +120,9 @@ export function ServiceOrderForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!serviceOrder?.id}>
                 <FormControl>
-                  <SelectTrigger disabled={!!serviceOrder}>
+                  <SelectTrigger>
                     <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
                 </FormControl>
@@ -164,7 +164,7 @@ export function ServiceOrderForm({
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="status"
@@ -198,7 +198,7 @@ export function ServiceOrderForm({
                 <FormControl>
                   <Input 
                     type="text" 
-                    placeholder="R$ 150,00" 
+                    placeholder="R$ 0,00" 
                     {...field} 
                     onChange={handleCurrencyChange} />
                 </FormControl>
@@ -221,7 +221,7 @@ export function ServiceOrderForm({
           )}
         />
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Salvando...' : serviceOrder ? 'Salvar Alterações' : 'Criar Ordem de Serviço'}
+          {isSubmitting ? 'Salvando...' : serviceOrder?.id ? 'Salvar Alterações' : 'Criar Ordem de Serviço'}
         </Button>
       </form>
     </Form>

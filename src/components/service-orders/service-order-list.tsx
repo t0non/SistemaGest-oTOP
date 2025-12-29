@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -80,9 +81,22 @@ export function ServiceOrderList({
     onAfterPrint: () => setOsToPrint(null),
   });
 
+  const onPrintClick = React.useCallback(
+    (e: React.MouseEvent, order: ServiceOrder) => {
+      e.preventDefault();
+      const client = clients.find((c) => c.id === order.clientId);
+      if (client) {
+        setOsToPrint({ ...order, clientCpf: client.cpf });
+      } else {
+        setOsToPrint(order);
+      }
+    },
+    [clients]
+  );
+  
   React.useEffect(() => {
-    if (osToPrint && handlePrint) {
-        handlePrint();
+    if (osToPrint) {
+      handlePrint();
     }
   }, [osToPrint, handlePrint]);
 
@@ -134,29 +148,19 @@ export function ServiceOrderList({
   };
   
   const handleOpenForm = (os: ServiceOrder | 'new') => {
-      setEditingOS(os === 'new' ? {} as ServiceOrder : os);
+      setEditingOS(os === 'new' ? {id: ''} as ServiceOrder : os);
   }
-  
-  const onPrintClick = (e: React.MouseEvent, order: ServiceOrder, client: Client | undefined) => {
-    e.preventDefault();
-    if(client) {
-      setOsToPrint({...order, clientCpf: client.cpf});
-    } else {
-      setOsToPrint(order);
-    }
-  }
-
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
         <Input
           placeholder="Buscar por cliente, equipamento ou ID..."
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
           onChange={(e) => handleSearch(e.target.value)}
           defaultValue={searchParams.get('query')?.toString()}
         />
-        <Button onClick={() => handleOpenForm('new')}>
+        <Button onClick={() => handleOpenForm('new')} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova OS
         </Button>
@@ -165,12 +169,12 @@ export function ServiceOrderList({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
+              <TableHead className="w-[100px]">ID</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead className="hidden md:table-cell">Equipamento</TableHead>
-              <TableHead className="hidden sm:table-cell">Data de Entrada</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
+              <TableHead className="hidden lg:table-cell">Equipamento</TableHead>
+              <TableHead className="hidden md:table-cell">Entrada</TableHead>
+              <TableHead className="hidden sm:table-cell">Status</TableHead>
+              <TableHead className="w-[50px]">
                 <span className="sr-only">Ações</span>
               </TableHead>
             </TableRow>
@@ -178,14 +182,18 @@ export function ServiceOrderList({
           <TableBody>
             {initialServiceOrders.length > 0 ? (
               initialServiceOrders.map((os) => {
-                const client = clients.find(c => c.id === os.clientId);
                 return (
                   <TableRow key={os.id}>
                     <TableCell className="font-bold">{os.id}</TableCell>
-                    <TableCell className="font-medium">{os.clientName}</TableCell>
-                    <TableCell className="hidden md:table-cell">{os.equipment}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatDate(os.entryDate)}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium">
+                      <div className='flex flex-col'>
+                        <span>{os.clientName}</span>
+                        <span className='text-xs text-muted-foreground sm:hidden'>{os.status}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">{os.equipment}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatDate(os.entryDate)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant="outline" className={cn('font-semibold', statusColors[os.status])}>
                         {os.status}
                       </Badge>
@@ -199,12 +207,12 @@ export function ServiceOrderList({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleOpenForm(os)}}>
+                          <DropdownMenuItem onClick={() => handleOpenForm(os)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           
-                           <DropdownMenuItem onClick={(e) => onPrintClick(e as unknown as React.MouseEvent, os, client)}>
+                           <DropdownMenuItem onClick={(e) => onPrintClick(e as unknown as React.MouseEvent, os)}>
                               <Printer className="mr-2 h-4 w-4" />
                               Imprimir Recibo
                           </DropdownMenuItem>
@@ -237,10 +245,6 @@ export function ServiceOrderList({
         onOpenChange={(isOpen) => {
             if (!isOpen) {
                 setEditingOS(null);
-                setTimeout(() => {
-                  document.body.style.pointerEvents = "";
-                  document.body.removeAttribute("data-scroll-locked");
-                }, 100); 
             }
         }}
       >

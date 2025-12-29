@@ -1,3 +1,4 @@
+
 'use client';
 
 import {Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend} from 'recharts';
@@ -40,11 +41,11 @@ export function OverviewChart({data}: OverviewChartProps) {
 
     return Object.keys(dailyData)
       .map((day) => ({
-        name: format(new Date(day), 'dd/MMM', {locale: ptBR}),
+        name: new Date(day),
         income: dailyData[day].income,
         expense: dailyData[day].expense,
       }))
-      .sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+      .sort((a, b) => a.name.getTime() - b.name.getTime());
   };
 
   const chartData = processDataForChart(data);
@@ -59,6 +60,7 @@ export function OverviewChart({data}: OverviewChartProps) {
             fontSize={12}
             tickLine={false}
             axisLine={false}
+            tickFormatter={(date) => format(date, 'dd/MMM', {locale: ptBR})}
           />
           <YAxis
             stroke="hsl(var(--muted-foreground))"
@@ -71,6 +73,12 @@ export function OverviewChart({data}: OverviewChartProps) {
             cursor={{fill: 'hsl(var(--accent) / 0.2)'}}
             content={
               <ChartTooltipContent
+                labelFormatter={(label, payload) => {
+                    if (payload && payload.length > 0) {
+                        return format(new Date(payload[0].payload.name), "eeee, dd 'de' MMMM", { locale: ptBR });
+                    }
+                    return label;
+                }}
                 formatter={(value, name) => (
                   <div className="flex flex-col">
                     <span className="capitalize text-muted-foreground">

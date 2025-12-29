@@ -44,6 +44,7 @@ import {ClientForm} from './client-form';
 import {deleteClient} from '@/app/dashboard/clients/actions';
 import {MoreHorizontal, PlusCircle, Trash2, Edit, MessageSquare} from 'lucide-react';
 import {Skeleton} from '../ui/skeleton';
+import { formatCPF, formatPhone } from '@/lib/formatters';
 
 export function ClientList({initialClients}: {initialClients: Client[]}) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -109,14 +110,14 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
         <Input
           placeholder="Buscar por nome ou CPF..."
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
           onChange={(e) => handleSearch(e.target.value)}
           defaultValue={searchParams.get('query')?.toString()}
         />
-        <Button onClick={openFormForNew}>
+        <Button onClick={openFormForNew} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Cliente
         </Button>
@@ -126,8 +127,8 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead className="hidden sm:table-cell">CPF</TableHead>
-              <TableHead className="hidden md:table-cell">Telefone</TableHead>
+              <TableHead className="hidden md:table-cell">CPF</TableHead>
+              <TableHead className="hidden sm:table-cell">Telefone</TableHead>
               <TableHead>
                 <span className="sr-only">Ações</span>
               </TableHead>
@@ -137,14 +138,19 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
             {initialClients.length > 0 ? (
               initialClients.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {client.cpf}
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                        <span>{client.name}</span>
+                        <span className="text-xs text-muted-foreground md:hidden">{formatCPF(client.cpf)}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
+                    {formatCPF(client.cpf)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Button variant="ghost" size="sm" onClick={() => openWhatsApp(client.phone)}>
                         <MessageSquare className="mr-2 h-4 w-4" />
-                        {client.phone}
+                        {formatPhone(client.phone)}
                     </Button>
                   </TableCell>
                   <TableCell className="text-right">
@@ -185,7 +191,7 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
 
       {/* Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-headline">
               {selectedClient ? 'Editar Cliente' : 'Novo Cliente'}
