@@ -10,77 +10,118 @@ interface PrintableOrderProps {
 
 export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderProps>(
   ({ data = {} as ServiceOrder }, ref) => {
-    const id = data.id || '000';
-    const clientName = data.clientName || 'Consumidor';
-    const entryDate = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    // Tratamento de dados para não quebrar se vier vazio
+    const id = data.id || "0000";
+    const clientName = data.clientName || "Consumidor Final";
+    const date = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    
+    // Simula o item da tabela baseado nos dados da OS
+    const mainItem = {
+        qtd: "01",
+        desc: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
+        unitPrice: data.finalValue || 0,
+        total: data.finalValue || 0
+    };
+
+    // Gera linhas vazias para ficar igual ao papel da foto (Total de 12 linhas na tabela)
+    const emptyRows = Array(10).fill(null);
 
     return (
-        <div ref={ref} className="p-10 bg-white text-black font-sans w-[210mm] min-h-[297mm]">
+      <div ref={ref} className="bg-white text-black font-sans w-[210mm] min-h-[297mm] p-12 relative">
         
-        <div className="border-b-2 border-black pb-4 mb-4 flex justify-between items-center">
-            <div>
+        {/* === CABEÇALHO === */}
+        <div className="flex justify-between items-start mb-8">
+            {/* Lado Esquerdo: LOGO */}
+            <div className="pt-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" style={{width: '180px'}} />
-                <p className="text-sm mt-2">Assistência Técnica Especializada</p>
-                <p className="text-sm mt-1">Rua Fictícia, 123 - Belo Horizonte, MG</p>
-                <p className="text-sm">CNPJ: 00.000.000/0001-00 | Tel: (31) 99999-9999</p>
             </div>
+
+            {/* Lado Direito: Título e Dados */}
             <div className="text-right">
-                <h2 className="text-2xl font-bold uppercase">Recibo de Serviço</h2>
-                <p className="text-lg font-bold">OS: #{id}</p>
+                <h2 className="text-3xl font-bold uppercase mb-2">SERVIÇO</h2>
+                <div className="text-xl font-bold">N.º {id.slice(0, 6)}</div>
+                <div className="text-sm font-semibold mt-1">DATA: {date}</div>
             </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-4">
-            <p className="col-span-2"><strong>Data:</strong> {entryDate}</p>
-            <div className="col-span-2">
-                <p><strong>Cliente:</strong> {clientName}</p>
-                {data.clientCpf && <p><strong>CPF:</strong> {formatCPF(data.clientCpf)}</p>}
-            </div>
+        {/* === CAIXA DO CLIENTE === */}
+        <div className="border border-black p-2 mb-6">
+            <p className="text-xs font-bold mb-1">CLIENTE</p>
+            <p className="text-sm pl-2">Nome: <span className="font-normal text-base uppercase">{clientName}</span></p>
+            {data.clientCpf && <p className="text-sm pl-2 mt-1">CPF: <span className="font-normal text-base">{formatCPF(data.clientCpf)}</span></p>}
         </div>
 
-        <div className="mb-8">
-            <table className="w-full text-left text-sm">
-                <thead>
-                    <tr className="border-b-2 border-gray-300">
-                        <th className="py-2">Descrição / Serviço</th>
-                        <th className="py-2 text-right">Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr className="border-b border-gray-200">
-                        <td className="py-3">
-                            <p className="font-bold">{data.equipment || 'N/A'}</p>
-                            <p className="text-gray-500">{data.problemDescription || 'Manutenção e reparos diversos.'}</p>
-                        </td>
-                        <td className="py-3 text-right font-bold">
-                            R$ {Number(data.finalValue || 0).toFixed(2)}
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td className="pt-4 text-right font-bold text-lg">TOTAL A PAGAR:</td>
-                        <td className="pt-4 text-right font-bold text-lg">
-                            R$ {Number(data.finalValue || 0).toFixed(2)}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+        {/* === TABELA === */}
+        <table className="w-full border-collapse border border-black text-sm mb-2">
+            <thead>
+                <tr>
+                    <th className="border border-black p-1 w-16 text-left">QTD</th>
+                    <th className="border border-black p-1 text-left">DESCRIÇÃO</th>
+                    <th className="border border-black p-1 w-32 text-left">PREÇO UNITÁRIO</th>
+                    <th className="border border-black p-1 w-32 text-left">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {/* Linha do Produto Real */}
+                <tr className="h-8">
+                    <td className="border border-black p-1 px-2 align-top">{mainItem.qtd}</td>
+                    <td className="border border-black p-1 px-2 align-top uppercase">{mainItem.desc}</td>
+                    <td className="border border-black p-1 px-2 align-top">R$ {Number(mainItem.unitPrice).toFixed(2)}</td>
+                    <td className="border border-black p-1 px-2 align-top">R$ {Number(mainItem.total).toFixed(2)}</td>
+                </tr>
 
-        <div className="mt-12 pt-8 border-t-2 border-gray-300 text-center">
-            <p className="text-xs text-gray-500 mb-8 text-justify">
-                GARANTIA: A garantia é de 90 dias para mão de obra e peças substituídas, contados a partir da data de retirada. 
-                Não cobrimos mau uso, danos físicos, líquidos ou vírus. Equipamentos não retirados em 90 dias serão descartados.
-            </p>
-            
-            <div className="flex justify-between mt-16 px-8">
-                <div className="border-t border-black w-5/12 pt-2">
-                    <p className="text-sm">Assinatura TechStore BH</p>
+                {/* Linhas Vazias */}
+                {emptyRows.map((_, index) => (
+                    <tr key={index} className="h-8">
+                        <td className="border border-black"></td>
+                        <td className="border border-black bg-gray-50/30"></td>
+                        <td className="border border-black"></td>
+                        <td className="border border-black"></td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+
+        {/* === TOTAL === */}
+        <div className="flex justify-end mb-6">
+            <div className="flex items-center">
+                <span className="font-bold mr-2 text-sm">TOTAL R$</span>
+                <div className="border border-black w-32 h-10 flex items-center justify-end px-2 font-bold text-lg">
+                    {Number(mainItem.total).toFixed(2)}
                 </div>
-                <div className="border-t border-black w-5/12 pt-2">
-                    <p className="text-sm">Assinatura do Cliente</p>
+            </div>
+        </div>
+
+        {/* === TERMOS E CONDIÇÕES === */}
+        <div className="text-[10px] text-justify leading-tight mb-20 space-y-1">
+            <p className="font-bold">Normas e Procedimentos</p>
+            <p>
+                <strong>Prazo de orçamento:</strong> O prazo de validade dos valores orçados é de 30 (trinta) dias contados de sua apresentação ao cliente.
+            </p>
+            <p>
+                <strong>Garantia:</strong> O serviço Autorizado garante os serviços de assistência técnica prestados, nas mesmas condições da prestação do serviço anterior (a domicilio ou posto na empresa pelo consumidor). A garantia compreende a 1 ano das peças utilizadas e 90 dias da mão de obra, contados da entrega efetiva do produto.
+            </p>
+            <p>
+                A garantia perde sua validade: Se houver utilização de rede elétrica imprópria, manutenção inadequada por técnico não autorizado e mal uso.
+            </p>
+        </div>
+
+        {/* === RODAPÉ === */}
+        <div className="text-center">
+            <h3 className="font-bold text-sm uppercase mb-6">AGRADECEMOS A SUA PREFERÊNCIA!</h3>
+            
+            <div className="border border-black p-3 text-left text-[11px] flex justify-between items-center">
+                <div className="space-y-0.5">
+                    <p>Endereço: Rua Tupis n.449 Bairro: Centro</p>
+                    <p>Telefone: (31) 9911-3393 Pedro Tonon CNPJ: 29.714.668/0001-82</p>
+                    <p>Email: contato@topinfobh.com.br</p>
+                    <p>Instagram: @topinfobh</p>
+                </div>
+                <div className="text-right">
+                    <p>Site: www.TopInfoBH.com.br</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" className="w-24 mt-2 ml-auto" />
                 </div>
             </div>
         </div>
