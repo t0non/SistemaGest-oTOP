@@ -25,10 +25,8 @@ export const PrintableQuote = forwardRef<HTMLDivElement, any>(
         {/* CABEÇALHO */}
         <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
             <div>
-                {/* LOGO (Texto simulando imagem) */}
-                <h1 className="text-3xl font-bold text-red-600 tracking-tighter">
-                    TOP<span className="text-blue-600">InfoBH</span>
-                </h1>
+                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" style={{width: '200px'}} />
                 <p className="text-xs text-gray-600 mt-1">Assistência Técnica Especializada</p>
             </div>
             <div className="text-right">
@@ -106,9 +104,8 @@ export const PrintableQuote = forwardRef<HTMLDivElement, any>(
                     <p>Email: contato@topinfobh.com.br</p>
                     <p>Instagram: @topinfobh</p>
                 </div>
-                <div className="w-48 h-12 bg-gray-200 flex items-center justify-center font-bold text-gray-500 border border-gray-400">
-                    LOGO AQUI
-                </div>
+                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" style={{width: '150px'}} />
             </div>
         </div>
 

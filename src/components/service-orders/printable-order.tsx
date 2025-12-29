@@ -17,16 +17,22 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
     return (
         <div ref={ref} className="p-10 bg-white text-black font-sans w-[210mm] min-h-[297mm]">
         
-        <div className="border-b-2 border-black pb-4 mb-4">
-            <h1 className="text-2xl font-bold uppercase">TechStore BH</h1>
-            <p className="text-sm">Assistência Técnica Especializada</p>
-            <p className="text-sm mt-1">Rua Fictícia, 123 - Belo Horizonte, MG</p>
-            <p className="text-sm">CNPJ: 00.000.000/0001-00 | Tel: (31) 99999-9999</p>
+        <div className="border-b-2 border-black pb-4 mb-4 flex justify-between items-center">
+            <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" style={{width: '180px'}} />
+                <p className="text-sm mt-2">Assistência Técnica Especializada</p>
+                <p className="text-sm mt-1">Rua Fictícia, 123 - Belo Horizonte, MG</p>
+                <p className="text-sm">CNPJ: 00.000.000/0001-00 | Tel: (31) 99999-9999</p>
+            </div>
+            <div className="text-right">
+                <h2 className="text-2xl font-bold uppercase">Recibo de Serviço</h2>
+                <p className="text-lg font-bold">OS: #{id}</p>
+            </div>
         </div>
 
         <div className="mb-6 grid grid-cols-2 gap-4">
-            <p><strong>OS:</strong> #{id}</p>
-            <p><strong>Data:</strong> {entryDate}</p>
+            <p className="col-span-2"><strong>Data:</strong> {entryDate}</p>
             <div className="col-span-2">
                 <p><strong>Cliente:</strong> {clientName}</p>
                 {data.clientCpf && <p><strong>CPF:</strong> {formatCPF(data.clientCpf)}</p>}

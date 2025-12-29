@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { UserNav } from './user-nav';
+import { UserNav } from '@/components/layout/user-nav';
 
 export function Header() {
   const pathname = usePathname();
@@ -20,9 +21,7 @@ export function Header() {
       {/* 1. Lado Esquerdo: Logo e Navegação */}
       <div className="flex items-center gap-8">
         <Link href="/dashboard">
-            <h1 className="text-xl font-bold text-blue-600 tracking-tighter">
-            Tech<span className="text-black">Store BH</span>
-            </h1>
+          <Image src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" width={150} height={40} className="object-contain" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
