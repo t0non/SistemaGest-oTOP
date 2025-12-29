@@ -83,3 +83,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Correção para travamento do Shadcn/Radix UI */
+body[style*="pointer-events: none"] {
+  pointer-events: auto !important;
+}
+
+/* Garante que o scroll não suma pra sempre */
+html, body {
+  overflow: auto !important;
+}
