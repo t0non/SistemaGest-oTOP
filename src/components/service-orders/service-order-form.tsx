@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -195,7 +194,7 @@ export function ServiceOrderForm({
               <FormItem>
                 <FormLabel>Valor Final (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="150.00" {...field} onChange={event => field.onChange(event.target.valueAsNumber)} />
+                  <Input type="number" placeholder="150.00" {...field} value={field.value ?? ''} onChange={event => field.onChange(event.target.valueAsNumber)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
