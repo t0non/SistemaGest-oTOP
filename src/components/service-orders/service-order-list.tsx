@@ -57,30 +57,6 @@ const statusColors: Record<ServiceOrderStatusType, string> = {
     'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20',
 };
 
-const PrintMenuItem = ({ order, client }: { order: ServiceOrder; client: Client | undefined }) => {
-  const componentRef = React.useRef(null);
-
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `OS-${order.id}`,
-  });
-
-  if (!client) return null;
-
-  return (
-    <>
-      <div style={{ display: 'none' }}>
-        <PrintableOrder ref={componentRef} order={order} client={client} />
-      </div>
-      <DropdownMenuItem onSelect={handlePrint}>
-        <Printer className="mr-2 h-4 w-4" />
-        Imprimir Recibo
-      </DropdownMenuItem>
-    </>
-  );
-};
-
-
 export function ServiceOrderList({
   initialServiceOrders,
   clients
@@ -90,11 +66,25 @@ export function ServiceOrderList({
 }) {
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
+  const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
+  const printRef = React.useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: osToPrint ? `Recibo-${osToPrint.id.slice(0, 6)}` : 'Recibo',
+    onAfterPrint: () => setOsToPrint(null),
+  });
+
+  React.useEffect(() => {
+    if (osToPrint) {
+      handlePrint();
+    }
+  }, [osToPrint, handlePrint]);
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -203,7 +193,10 @@ export function ServiceOrderList({
                             Editar
                           </DropdownMenuItem>
                           
-                          <PrintMenuItem order={os} client={client} />
+                           <DropdownMenuItem onClick={() => client && setOsToPrint({...os, clientCpf: client.cpf})}>
+                              <Printer className="mr-2 h-4 w-4" />
+                              Imprimir Recibo
+                          </DropdownMenuItem>
 
                           {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
                               <DropdownMenuItem onClick={() => handleFinalize(os)}>
@@ -282,6 +275,10 @@ export function ServiceOrderList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="hidden">
+        {osToPrint && <PrintableOrder ref={printRef} data={osToPrint} />}
+      </div>
     </>
   );
 }

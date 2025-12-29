@@ -39,4 +39,5 @@ export type ServiceOrder = {
     status: ServiceOrderStatus;
     notes?: string;
     finalValue?: number;
+    clientCpf?: string; // Adicionado para impressão
 };
