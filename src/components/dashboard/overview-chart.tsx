@@ -1,23 +1,26 @@
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from 'recharts';
+import {Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend} from 'recharts';
 import {format} from 'date-fns';
 import {ptBR} from 'date-fns/locale';
 
-import {ChartTooltipContent} from '@/components/ui/chart';
+import {ChartContainer, ChartTooltipContent, type ChartConfig} from '@/components/ui/chart';
 import type {Transaction} from '@/lib/definitions';
 
 interface OverviewChartProps {
   data: Transaction[];
 }
+
+const chartConfig = {
+  income: {
+    label: 'Entradas',
+    color: 'hsl(var(--chart-1))',
+  },
+  expense: {
+    label: 'Saídas',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig;
 
 export function OverviewChart({data}: OverviewChartProps) {
   const processDataForChart = (transactions: Transaction[]) => {
@@ -34,7 +37,7 @@ export function OverviewChart({data}: OverviewChartProps) {
         dailyData[day].expense += transaction.amount;
       }
     });
-    
+
     return Object.keys(dailyData)
       .map((day) => ({
         name: format(new Date(day), 'dd/MMM', {locale: ptBR}),
@@ -47,49 +50,54 @@ export function OverviewChart({data}: OverviewChartProps) {
   const chartData = processDataForChart(data);
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={chartData}>
-        <XAxis
-          dataKey="name"
-          stroke="hsl(var(--muted-foreground))"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          stroke="hsl(var(--muted-foreground))"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(value) => `R$${value}`}
-        />
-        <Tooltip
-          cursor={{fill: 'hsl(var(--accent) / 0.2)'}}
-          content={<ChartTooltipContent
-            formatter={(value, name) => (
-                <div className="flex flex-col">
-                    <span className="capitalize text-muted-foreground">{name === 'income' ? 'Entrada' : 'Saída'}</span>
-                    <span>{new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(value as number)}</span>
-                </div>
+    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+      <ResponsiveContainer width="100%" height={350}>
+        <BarChart data={chartData}>
+          <XAxis
+            dataKey="name"
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => `R$${value}`}
+          />
+          <Tooltip
+            cursor={{fill: 'hsl(var(--accent) / 0.2)'}}
+            content={
+              <ChartTooltipContent
+                formatter={(value, name) => (
+                  <div className="flex flex-col">
+                    <span className="capitalize text-muted-foreground">
+                      {name === 'income' ? 'Entrada' : 'Saída'}
+                    </span>
+                    <span>
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(value as number)}
+                    </span>
+                  </div>
+                )}
+              />
+            }
+          />
+          <Legend
+            formatter={(value) => (
+              <span className="capitalize text-muted-foreground">
+                {value === 'income' ? 'Entradas' : 'Saídas'}
+              </span>
             )}
-            />}
-        />
-        <Legend
-          formatter={(value) => (
-            <span className="capitalize text-muted-foreground">{value === 'income' ? 'Entradas' : 'Saídas'}</span>
-          )}
-        />
-        <Bar
-          dataKey="income"
-          fill="hsl(var(--chart-1))"
-          radius={[4, 4, 0, 0]}
-        />
-        <Bar
-          dataKey="expense"
-          fill="hsl(var(--chart-2))"
-          radius={[4, 4, 0, 0]}
-        />
-      </BarChart>
-    </ResponsiveContainer>
+          />
+          <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartContainer>
   );
 }
