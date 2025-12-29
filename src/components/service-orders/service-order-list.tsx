@@ -90,12 +90,6 @@ export function ServiceOrderList({
   }
 
   React.useEffect(() => {
-    if (osToPrint) {
-      handlePrint();
-    }
-  }, [osToPrint, handlePrint]);
-
-  React.useEffect(() => {
     setEditingOS(null);
     return () => {
       document.body.style.pointerEvents = "";
@@ -217,7 +211,18 @@ export function ServiceOrderList({
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onPrint(os); }}>
+                        <DropdownMenuItem onSelect={(e) => { 
+                            e.preventDefault(); 
+                            const client = clients.find(c => c.id === os.clientId);
+                            if (!client) {
+                                toast({ variant: 'destructive', title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
+                                return;
+                            }
+                            setOsToPrint(os);
+                            setTimeout(() => {
+                                handlePrint();
+                            }, 100);
+                        }}>
                           <Printer className="mr-2 h-4 w-4" />
                           Imprimir Recibo
                         </DropdownMenuItem>
