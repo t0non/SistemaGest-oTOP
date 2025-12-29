@@ -84,7 +84,7 @@ export function ServiceOrderList({
   const onPrint = (order: ServiceOrder) => {
     const client = clients.find(c => c.id === order.clientId);
     if (!client) {
-      toast({ title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
       return;
     }
     setOsToPrint(order);
