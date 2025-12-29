@@ -1,6 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
+import ReactDOMServer from 'react-dom/server';
 import {
   Table,
   TableBody,
@@ -46,6 +48,7 @@ import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle } from 'lucide-r
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { addTransaction } from '@/app/dashboard/finance/actions';
+import { PrintableOrder } from './printable-order';
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
     'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
@@ -70,8 +73,52 @@ export function ServiceOrderList({
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Garante que o modal comece fechado no primeiro render
+  const handlePrint = (orderToPrint: ServiceOrder) => {
+    const client = clients.find(c => c.id === orderToPrint.clientId);
+    if (!client) return;
+
+    const printableContent = <PrintableOrder order={orderToPrint} client={client} />;
+    const htmlContent = ReactDOMServer.renderToString(printableContent);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+        doc.open();
+        doc.write(`
+            <html>
+                <head>
+                    <title>Recibo OS ${orderToPrint.id}</title>
+                    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+                    <script src="https://cdn.tailwindcss.com"></script>
+                    <style>
+                        @page { size: A4; margin: 0; }
+                        body { -webkit-print-color-adjust: exact; font-family: 'Inter', sans-serif; }
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                </body>
+            </html>
+        `);
+        doc.close();
+
+        iframe.contentWindow?.focus();
+        // Set timeout to ensure all styles are applied before printing
+        setTimeout(() => {
+            iframe.contentWindow?.print();
+            document.body.removeChild(iframe);
+        }, 500);
+    }
+  };
+  
   React.useEffect(() => {
+    // Garante que o modal comece fechado no primeiro render
     setEditingOS(null);
     
     // Cleanup ao sair da tela para garantir que o body não fique travado
@@ -126,6 +173,10 @@ export function ServiceOrderList({
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   };
+  
+  const handleOpenForm = (os: ServiceOrder | 'new') => {
+      setEditingOS(os);
+  }
 
   return (
     <>
@@ -136,7 +187,7 @@ export function ServiceOrderList({
           onChange={(e) => handleSearch(e.target.value)}
           defaultValue={searchParams.get('query')?.toString()}
         />
-        <Button onClick={() => setEditingOS('new')}>
+        <Button onClick={() => handleOpenForm('new')}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova OS
         </Button>
@@ -177,13 +228,13 @@ export function ServiceOrderList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingOS(os)}>
+                        <DropdownMenuItem onClick={() => handleOpenForm(os)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled>
+                        <DropdownMenuItem onClick={() => handlePrint(os)}>
                           <Printer className="mr-2 h-4 w-4" />
-                          Imprimir Via
+                          Imprimir Recibo
                         </DropdownMenuItem>
                         {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
                             <DropdownMenuItem onClick={() => handleFinalize(os)}>
