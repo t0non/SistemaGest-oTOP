@@ -48,7 +48,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { addTransaction } from '@/app/dashboard/finance/actions';
 import { PrintableOrder } from './printable-order';
-import { createRoot } from 'react-dom/client';
+import { useReactToPrint } from 'react-to-print';
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
     'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
@@ -65,66 +65,39 @@ export function ServiceOrderList({
   initialServiceOrders: ServiceOrder[];
   clients: Client[];
 }) {
-  const [editingOS, setEditingOS] = React.useState<ServiceOrder | 'new' | null>(null);
+  const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
+  const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
+
+  const printRef = React.useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  const handlePrint = (orderToPrint: ServiceOrder) => {
-    const client = clients.find(c => c.id === orderToPrint.clientId);
-    if (!client) return;
-  
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-  
-    const doc = iframe.contentWindow?.document;
-  
-    if (doc) {
-      doc.open();
-      doc.write(`
-        <html>
-          <head>
-            <title>Recibo OS ${orderToPrint.id}</title>
-            <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-            <script src="https://cdn.tailwindcss.com"></script>
-            <style>
-              @page { size: A4; margin: 0; }
-              body { -webkit-print-color-adjust: exact; font-family: 'Inter', sans-serif; }
-            </style>
-          </head>
-          <body>
-            <div id="print-root"></div>
-          </body>
-        </html>
-      `);
-      doc.close();
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    onAfterPrint: () => setOsToPrint(null),
+  });
 
-      const printRoot = doc.getElementById('print-root');
-      if (printRoot) {
-        const root = createRoot(printRoot);
-        root.render(<PrintableOrder order={orderToPrint} client={client} />);
-      }
-  
-      iframe.contentWindow?.focus();
-      setTimeout(() => {
-        iframe.contentWindow?.print();
-        document.body.removeChild(iframe);
-      }, 500);
+  const onPrint = (order: ServiceOrder) => {
+    const client = clients.find(c => c.id === order.clientId);
+    if (!client) {
+      toast({ title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
+      return;
     }
-  };
-  
+    setOsToPrint(order);
+  }
+
   React.useEffect(() => {
-    // Garante que o modal comece fechado no primeiro render
+    if (osToPrint) {
+      handlePrint();
+    }
+  }, [osToPrint, handlePrint]);
+
+  React.useEffect(() => {
     setEditingOS(null);
-    
-    // Cleanup ao sair da tela para garantir que o body não fique travado
     return () => {
       document.body.style.pointerEvents = "";
       document.body.removeAttribute("data-scroll-locked");
@@ -178,11 +151,21 @@ export function ServiceOrderList({
   };
   
   const handleOpenForm = (os: ServiceOrder | 'new') => {
-      setEditingOS(os);
+      setEditingOS(os === 'new' ? {} as ServiceOrder : os);
   }
+  
+  const clientForPrint = osToPrint ? clients.find(c => c.id === osToPrint.clientId) : null;
 
   return (
     <>
+       {/* Componente de impressão oculto */}
+       <div className="hidden">
+        {osToPrint && clientForPrint && (
+            <PrintableOrder ref={printRef} order={osToPrint} client={clientForPrint} />
+        )}
+       </div>
+
+
       <div className="flex items-center justify-between gap-4 mb-4">
         <Input
           placeholder="Buscar por cliente, equipamento ou ID..."
@@ -235,7 +218,7 @@ export function ServiceOrderList({
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePrint(os)}>
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onPrint(os); }}>
                           <Printer className="mr-2 h-4 w-4" />
                           Imprimir Recibo
                         </DropdownMenuItem>
@@ -261,13 +244,11 @@ export function ServiceOrderList({
         </Table>
       </div>
 
-      {/* --- Modal Único para Edição/Criação --- */}
       <Dialog 
         open={!!editingOS} 
         onOpenChange={(isOpen) => {
             if (!isOpen) {
                 setEditingOS(null);
-                 // HACK DE SEGURANÇA: Remove a trava do corpo manualmente
                 setTimeout(() => {
                   document.body.style.pointerEvents = "";
                   document.body.removeAttribute("data-scroll-locked");
@@ -278,18 +259,18 @@ export function ServiceOrderList({
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline">
-              {editingOS === 'new' ? 'Nova Ordem de Serviço' : 'Editar Ordem de Serviço'}
+              {editingOS?.id ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço'}
             </DialogTitle>
             <DialogDescription>
-              {editingOS === 'new'
-                ? 'Preencha os dados da nova OS.'
-                : 'Atualize os dados da OS.'}
+              {editingOS?.id
+                ? 'Atualize os dados da OS.'
+                : 'Preencha os dados da nova OS.'}
             </DialogDescription>
           </DialogHeader>
           {editingOS && (
             <ServiceOrderForm
-                key={editingOS === 'new' ? 'new-os' : editingOS.id}
-                serviceOrder={editingOS === 'new' ? null : editingOS}
+                key={editingOS.id || 'new-os'}
+                serviceOrder={editingOS.id ? editingOS : null}
                 clients={clients}
                 onSuccess={() => setEditingOS(null)}
             />
@@ -297,7 +278,6 @@ export function ServiceOrderList({
         </DialogContent>
       </Dialog>
       
-      {/* --- Modal Único para Confirmação de Finalização --- */}
       <AlertDialog open={!!osToFinalize} onOpenChange={(isOpen) => !isOpen && setOsToFinalize(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
