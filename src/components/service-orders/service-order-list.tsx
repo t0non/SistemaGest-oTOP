@@ -63,15 +63,16 @@ const PrintMenuItem = ({ order, clients }: { order: ServiceOrder; clients: Clien
     const printRef = React.useRef<HTMLDivElement>(null);
     const client = clients.find(c => c.id === order.clientId);
     const orderWithCpf = { ...order, clientCpf: client?.cpf };
-  
+
     const handlePrint = useReactToPrint({
-      content: () => printRef.current,
+      contentRef: () => printRef.current,
       documentTitle: `Recibo-${order.id || 'OS'}`,
+      removeAfterPrint: true,
     });
   
     return (
       <>
-        <DropdownMenuItem onSelect={handlePrint}>
+        <DropdownMenuItem onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" />
           Imprimir Recibo
         </DropdownMenuItem>
@@ -284,5 +285,7 @@ export function ServiceOrderList({
     </>
   );
 }
+
+    
 
     
