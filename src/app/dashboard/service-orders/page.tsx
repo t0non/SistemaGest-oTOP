@@ -7,16 +7,11 @@ import { ServiceOrderList } from '@/components/service-orders/service-order-list
 import { getClients } from '../clients/actions';
 import { useEffect, useState } from 'react';
 import type { Client, ServiceOrder } from '@/lib/definitions';
+import { useSearchParams } from 'next/navigation';
 
-export default function ServiceOrdersPage({
-  searchParams,
-}: {
-  searchParams?: {
-    query?: string;
-    page?: string;
-  };
-}) {
-  const query = searchParams?.query || '';
+function ServiceOrdersContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('query') || '';
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +31,18 @@ export default function ServiceOrdersPage({
   }, [query]);
 
   return (
+    <>
+      {loading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : (
+        <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />
+      )}
+    </>
+  );
+}
+
+export default function ServiceOrdersPage() {
+  return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-headline font-bold">Ordens de Serviço</h1>
@@ -44,11 +51,7 @@ export default function ServiceOrdersPage({
         </p>
       </div>
       <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-        {loading ? (
-          <Skeleton className="h-96 w-full" />
-        ) : (
-          <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />
-        )}
+        <ServiceOrdersContent />
       </Suspense>
     </div>
   );
