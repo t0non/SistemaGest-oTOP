@@ -76,27 +76,26 @@ export function ServiceOrderList({
   const { replace } = useRouter();
 
   const handlePrint = useReactToPrint({
-    contentRef: () => printRef.current,
-    documentTitle: osToPrint ? `Recibo-${osToPrint.id.slice(0, 6)}` : 'Recibo',
+    content: () => printRef.current,
+    documentTitle: `Recibo-OS-${osToPrint?.id || ''}`,
     onAfterPrint: () => setOsToPrint(null),
   });
 
-  const onPrintClick = React.useCallback(
-    (e: React.MouseEvent, order: ServiceOrder) => {
-      e.preventDefault();
-      const client = clients.find((c) => c.id === order.clientId);
-      if (client) {
-        setOsToPrint({ ...order, clientCpf: client.cpf });
-      } else {
-        setOsToPrint(order);
-      }
-    },
-    [clients]
-  );
+  const onPrintClick = (order: ServiceOrder) => {
+    const client = clients.find((c) => c.id === order.clientId);
+    const orderWithClientData = {
+        ...order,
+        clientCpf: client?.cpf,
+    }
+    setOsToPrint(orderWithClientData);
+  };
   
   React.useEffect(() => {
     if (osToPrint) {
-      handlePrint();
+      const timeout = setTimeout(() => {
+        handlePrint();
+      }, 100);
+      return () => clearTimeout(timeout);
     }
   }, [osToPrint, handlePrint]);
 
@@ -169,11 +168,10 @@ export function ServiceOrderList({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead className="hidden lg:table-cell">Equipamento</TableHead>
-              <TableHead className="hidden md:table-cell">Entrada</TableHead>
-              <TableHead className="hidden sm:table-cell">Status</TableHead>
+              <TableHead className="w-[100px] hidden sm:table-cell">ID</TableHead>
+              <TableHead>Cliente / Equipamento</TableHead>
+              <TableHead className="hidden lg:table-cell">Entrada</TableHead>
+              <TableHead className="hidden md:table-cell">Status</TableHead>
               <TableHead className="w-[50px]">
                 <span className="sr-only">Ações</span>
               </TableHead>
@@ -184,16 +182,16 @@ export function ServiceOrderList({
               initialServiceOrders.map((os) => {
                 return (
                   <TableRow key={os.id}>
-                    <TableCell className="font-bold">{os.id}</TableCell>
+                    <TableCell className="font-bold hidden sm:table-cell">{os.id}</TableCell>
                     <TableCell className="font-medium">
                       <div className='flex flex-col'>
-                        <span>{os.clientName}</span>
-                        <span className='text-xs text-muted-foreground sm:hidden'>{os.status}</span>
+                        <span className="font-semibold">{os.clientName}</span>
+                        <span className='text-sm text-muted-foreground'>{os.equipment}</span>
+                         <span className='text-xs text-muted-foreground md:hidden'>{os.status} - {formatDate(os.entryDate)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{os.equipment}</TableCell>
-                    <TableCell className="hidden md:table-cell">{formatDate(os.entryDate)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="hidden lg:table-cell">{formatDate(os.entryDate)}</TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant="outline" className={cn('font-semibold', statusColors[os.status])}>
                         {os.status}
                       </Badge>
@@ -212,7 +210,7 @@ export function ServiceOrderList({
                             Editar
                           </DropdownMenuItem>
                           
-                           <DropdownMenuItem onClick={(e) => onPrintClick(e as unknown as React.MouseEvent, os)}>
+                           <DropdownMenuItem onClick={() => onPrintClick(os)}>
                               <Printer className="mr-2 h-4 w-4" />
                               Imprimir Recibo
                           </DropdownMenuItem>
