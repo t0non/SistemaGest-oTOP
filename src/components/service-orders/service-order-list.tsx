@@ -59,6 +59,29 @@ const statusColors: Record<ServiceOrderStatusType, string> = {
     'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20',
 };
 
+const PrintMenuItem = ({ order, clients }: { order: ServiceOrder; clients: Client[] }) => {
+    const printRef = React.useRef<HTMLDivElement>(null);
+    const client = clients.find(c => c.id === order.clientId);
+    const orderWithCpf = { ...order, clientCpf: client?.cpf };
+  
+    const handlePrint = useReactToPrint({
+      content: () => printRef.current,
+      documentTitle: `Recibo-${order.id || 'OS'}`,
+    });
+  
+    return (
+      <>
+        <DropdownMenuItem onSelect={handlePrint}>
+          <Printer className="mr-2 h-4 w-4" />
+          Imprimir Recibo
+        </DropdownMenuItem>
+        <div className="hidden">
+          <PrintableOrder ref={printRef} data={orderWithCpf} />
+        </div>
+      </>
+    );
+};
+
 export function ServiceOrderList({
   initialServiceOrders,
   clients
@@ -73,29 +96,6 @@ export function ServiceOrderList({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
-
-  const clientMap = React.useMemo(() => 
-    new Map(clients.map(c => [c.id, c]))
-  , [clients]);
-
-  // --- LÓGICA DE IMPRESSÃO ---
-  const [orderToPrint, setOrderToPrint] = React.useState<ServiceOrder>(initialServiceOrders[0] || {} as ServiceOrder);
-  const printRef = React.useRef<HTMLDivElement>(null);
-
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Recibo-${orderToPrint?.id || 'OS'}`,
-  });
-
-  const triggerPrint = (order: ServiceOrder) => {
-    const client = clients.find(c => c.id === order.clientId);
-    setOrderToPrint({...order, clientCpf: client?.cpf});
-    setTimeout(() => {
-      handlePrint();
-    }, 10);
-  };
-  // --- FIM DA LÓGICA DE IMPRESSÃO ---
-
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -205,10 +205,7 @@ export function ServiceOrderList({
                             Editar
                           </DropdownMenuItem>
                           
-                          <DropdownMenuItem onClick={() => triggerPrint(os)}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Imprimir Recibo
-                          </DropdownMenuItem>
+                          <PrintMenuItem order={os} clients={clients} />
 
                           {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
                               <DropdownMenuItem onClick={() => handleFinalize(os)}>
@@ -284,13 +281,8 @@ export function ServiceOrderList({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- ÁREA DO RECIBO INVISÍVEL --- */}
-      <div className="hidden">
-        <PrintableOrder 
-          ref={printRef} 
-          data={orderToPrint} 
-        />
-      </div>
     </>
   );
 }
+
+    
