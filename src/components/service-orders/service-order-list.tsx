@@ -88,13 +88,8 @@ export function ServiceOrderList({
       return;
     }
     setOsToPrint(order);
+    handlePrint();
   }
-
-  React.useEffect(() => {
-    if (osToPrint) {
-      handlePrint();
-    }
-  }, [osToPrint, handlePrint]);
 
   React.useEffect(() => {
     setEditingOS(null);
