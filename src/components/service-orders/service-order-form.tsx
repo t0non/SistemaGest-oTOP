@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addServiceOrder, updateServiceOrder } from '@/app/dashboard/service-orders/actions';
 import type { Client, ServiceOrder } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCurrency, unformatCurrency } from '@/lib/formatters';
 
 const serviceOrderFormSchema = z.object({
@@ -55,19 +55,28 @@ export function ServiceOrderForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const defaultValues: Partial<ServiceOrderFormValues> = {
-    clientId: serviceOrder?.clientId || '',
-    equipment: serviceOrder?.equipment || '',
-    problemDescription: serviceOrder?.problemDescription || '',
-    status: serviceOrder?.status || 'Em Análise',
-    notes: serviceOrder?.notes || '',
-    finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
-  };
-
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderFormSchema),
-    defaultValues,
+    defaultValues: {
+      clientId: serviceOrder?.clientId || '',
+      equipment: serviceOrder?.equipment || '',
+      problemDescription: serviceOrder?.problemDescription || '',
+      status: serviceOrder?.status || 'Em Análise',
+      notes: serviceOrder?.notes || '',
+      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
+    },
   });
+
+  useEffect(() => {
+    form.reset({
+      clientId: serviceOrder?.clientId || '',
+      equipment: serviceOrder?.equipment || '',
+      problemDescription: serviceOrder?.problemDescription || '',
+      status: serviceOrder?.status || 'Em Análise',
+      notes: serviceOrder?.notes || '',
+      finalValue: serviceOrder?.finalValue ? formatCurrency(serviceOrder.finalValue) : '',
+    });
+  }, [serviceOrder, form]);
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     form.setValue('finalValue', formatCurrency(e.target.value));

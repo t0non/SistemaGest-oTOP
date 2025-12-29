@@ -41,18 +41,18 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import type { ServiceOrder, ServiceOrderStatus, Client } from '@/lib/definitions';
+import type { ServiceOrder, ServiceOrderStatus as ServiceOrderStatusType, Client } from '@/lib/definitions';
 import { ServiceOrderForm } from './service-order-form';
 import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
-const statusColors: Record<ServiceOrderStatus, string> = {
-    'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30',
-    'Aguardando Aprovação': 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30',
-    'Em Manutenção': 'bg-orange-500/20 text-orange-700 border-orange-500/30 hover:bg-orange-500/30',
-    'Pronto para Retirada': 'bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30',
-    'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30',
+const statusColors: Record<ServiceOrderStatusType, string> = {
+    'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
+    'Aguardando Aprovação': 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20',
+    'Em Manutenção': 'bg-orange-500/20 text-orange-700 border-orange-500/30 hover:bg-orange-500/30 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20',
+    'Pronto para Retirada': 'bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20',
+    'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20',
 };
 
 export function ServiceOrderList({
@@ -79,6 +79,13 @@ export function ServiceOrderList({
     }
     replace(`${pathname}?${params.toString()}`);
   }, 300);
+
+  const handleFormOpenChange = (open: boolean) => {
+    setIsFormOpen(open);
+    if (!open) {
+      setSelectedOS(null);
+    }
+  }
 
   const openFormForNew = () => {
     setSelectedOS(null);
@@ -191,7 +198,7 @@ export function ServiceOrderList({
       </div>
 
       {/* Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline">
@@ -206,7 +213,7 @@ export function ServiceOrderList({
           <ServiceOrderForm
             serviceOrder={selectedOS}
             clients={clients}
-            onSuccess={() => setIsFormOpen(false)}
+            onSuccess={() => handleFormOpenChange(false)}
           />
         </DialogContent>
       </Dialog>
