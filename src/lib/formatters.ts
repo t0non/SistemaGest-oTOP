@@ -29,20 +29,43 @@ export const formatPhone = (phone: string): string => {
 };
 
 export const formatCurrency = (value: string | number): string => {
-    let stringValue = String(value).replace(/\D/g, '');
-    if (!stringValue) return '';
-
-    // Convert to number, divide by 100
-    let numberValue = parseFloat(stringValue) / 100;
+    let stringValue = String(value);
     
-    // Format as BRL currency
-    return numberValue.toLocaleString('pt-BR', {
+    // Remove tudo que não for dígito ou vírgula
+    stringValue = stringValue.replace(/[^\d,]/g, '');
+
+    // Substitui vírgula por ponto para o parse
+    stringValue = stringValue.replace(',', '.');
+    
+    // Remove múltiplos pontos
+    const parts = stringValue.split('.');
+    if (parts.length > 2) {
+        stringValue = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Se o valor for vazio ou inválido, retorna uma string vazia
+    if (isNaN(parseFloat(stringValue))) {
+      return '';
+    }
+
+    return parseFloat(stringValue).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
         minimumFractionDigits: 2,
     });
 };
 
+
 export const unformatCurrency = (value: string): number => {
     if (!value) return 0;
-    const numericString = value.replace(/\D/g, '');
-    return parseFloat(numericString) / 100;
+    
+    // Remove o símbolo da moeda e os pontos de milhar
+    const numericString = value.replace('R$', '').replace(/\./g, '').trim();
+    
+    // Troca a vírgula do decimal por um ponto
+    const finalString = numericString.replace(',', '.');
+
+    const numberValue = parseFloat(finalString);
+    
+    return isNaN(numberValue) ? 0 : numberValue;
 };
