@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import ReactDOMServer from 'react-dom/server';
 import {
   Table,
   TableBody,
@@ -49,6 +48,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { addTransaction } from '@/app/dashboard/finance/actions';
 import { PrintableOrder } from './printable-order';
+import { createRoot } from 'react-dom/client';
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
     'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
@@ -76,44 +76,47 @@ export function ServiceOrderList({
   const handlePrint = (orderToPrint: ServiceOrder) => {
     const client = clients.find(c => c.id === orderToPrint.clientId);
     if (!client) return;
-
-    const printableContent = <PrintableOrder order={orderToPrint} client={client} />;
-    const htmlContent = ReactDOMServer.renderToString(printableContent);
-
+  
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.width = '0';
     iframe.style.height = '0';
     iframe.style.border = '0';
     document.body.appendChild(iframe);
-    
+  
     const doc = iframe.contentWindow?.document;
+  
     if (doc) {
-        doc.open();
-        doc.write(`
-            <html>
-                <head>
-                    <title>Recibo OS ${orderToPrint.id}</title>
-                    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-                    <script src="https://cdn.tailwindcss.com"></script>
-                    <style>
-                        @page { size: A4; margin: 0; }
-                        body { -webkit-print-color-adjust: exact; font-family: 'Inter', sans-serif; }
-                    </style>
-                </head>
-                <body>
-                    ${htmlContent}
-                </body>
-            </html>
-        `);
-        doc.close();
+      doc.open();
+      doc.write(`
+        <html>
+          <head>
+            <title>Recibo OS ${orderToPrint.id}</title>
+            <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @page { size: A4; margin: 0; }
+              body { -webkit-print-color-adjust: exact; font-family: 'Inter', sans-serif; }
+            </style>
+          </head>
+          <body>
+            <div id="print-root"></div>
+          </body>
+        </html>
+      `);
+      doc.close();
 
-        iframe.contentWindow?.focus();
-        // Set timeout to ensure all styles are applied before printing
-        setTimeout(() => {
-            iframe.contentWindow?.print();
-            document.body.removeChild(iframe);
-        }, 500);
+      const printRoot = doc.getElementById('print-root');
+      if (printRoot) {
+        const root = createRoot(printRoot);
+        root.render(<PrintableOrder order={orderToPrint} client={client} />);
+      }
+  
+      iframe.contentWindow?.focus();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        document.body.removeChild(iframe);
+      }, 500);
     }
   };
   
@@ -228,7 +231,7 @@ export function ServiceOrderList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenForm(os)}>
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleOpenForm(os)}}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
