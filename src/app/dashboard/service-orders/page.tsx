@@ -1,13 +1,12 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getServiceOrders } from './actions';
 import { ServiceOrderList } from '@/components/service-orders/service-order-list';
 import { getClients } from '../clients/actions';
-import { useEffect, useState } from 'react';
 import type { Client, ServiceOrder } from '@/lib/definitions';
-import { useSearchParams } from 'next/navigation';
 
 function ServiceOrdersContent() {
   const searchParams = useSearchParams();
@@ -30,15 +29,11 @@ function ServiceOrdersContent() {
     fetchData();
   }, [query]);
 
-  return (
-    <>
-      {loading ? (
-        <Skeleton className="h-96 w-full" />
-      ) : (
-        <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />
-      )}
-    </>
-  );
+  if (loading) {
+    return <Skeleton className="h-96 w-full" />;
+  }
+
+  return <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />;
 }
 
 export default function ServiceOrdersPage() {
