@@ -49,6 +49,8 @@ import { cn } from '@/lib/utils';
 import { addTransaction } from '@/app/dashboard/finance/actions';
 import { PrintableOrder } from './printable-order';
 import { useReactToPrint } from 'react-to-print';
+import { useCallback } from 'react';
+
 
 const statusColors: Record<ServiceOrderStatusType, string> = {
     'Em Análise': 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
@@ -67,33 +69,34 @@ export function ServiceOrderList({
 }) {
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
-  const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
-  const printRef = React.useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
+  const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
+  const printRef = React.useRef<HTMLDivElement>(null);
+
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Recibo-OS-${osToPrint?.id || ''}`,
+    documentTitle: osToPrint ? `Recibo-${osToPrint.id}` : 'Recibo',
     onAfterPrint: () => setOsToPrint(null),
+    removeAfterPrint: true,
   });
 
-  const onPrintClick = (order: ServiceOrder) => {
+  const onPrintClick = useCallback((order: ServiceOrder) => {
     const client = clients.find((c) => c.id === order.clientId);
     const orderWithClientData = {
-        ...order,
-        clientCpf: client?.cpf,
-    }
+      ...order,
+      clientCpf: client?.cpf,
+    };
     setOsToPrint(orderWithClientData);
-  };
-  
+  }, [clients]);
+
   React.useEffect(() => {
-    if (osToPrint) {
-      const timeout = setTimeout(() => {
-        handlePrint();
+    if (osToPrint && printRef.current) {
+       const timeout = setTimeout(() => {
+        handlePrint(null, () => printRef.current);
       }, 100);
       return () => clearTimeout(timeout);
     }
