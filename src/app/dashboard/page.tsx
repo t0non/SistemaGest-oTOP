@@ -9,6 +9,7 @@ import {DollarSign, TrendingUp, Users, Package, ArrowUp, ArrowDown, UserCheck} f
 import { getTransactions } from './finance/actions';
 import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format, parseISO } from 'date-fns';
 
 interface FinancialSummary {
   revenue: number;
@@ -53,6 +54,33 @@ export default function DashboardPage() {
       window.removeEventListener('local-storage-changed', handleStorageChange);
     };
   }, [fetchData]);
+
+  const chartData = React.useMemo(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const filtered = transactions.filter(t => {
+      const transactionDate = parseISO(t.date);
+      return transactionDate >= firstDayOfMonth;
+    });
+
+    const grouped: Record<string, { income: number, expense: number }> = {};
+
+    filtered.forEach(t => {
+      const dayKey = format(parseISO(t.date), 'yyyy-MM-dd');
+
+      if (!grouped[dayKey]) grouped[dayKey] = { income: 0, expense: 0 };
+
+      if (t.type === 'income') grouped[dayKey].income += Number(t.amount);
+      if (t.type === 'expense') grouped[dayKey].expense += Number(t.amount);
+    });
+
+    return Object.keys(grouped).map(key => ({
+      name: key,
+      income: grouped[key].income,
+      expense: grouped[key].expense
+    })).sort((a,b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+  }, [transactions]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
@@ -161,7 +189,7 @@ export default function DashboardPage() {
           <CardTitle className="font-headline">Visão Geral Financeira</CardTitle>
         </CardHeader>
         <CardContent>
-            <OverviewChart data={transactions} />
+            <OverviewChart data={chartData} />
         </CardContent>
       </Card>
     </div>
