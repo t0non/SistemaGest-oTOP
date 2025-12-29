@@ -5,7 +5,7 @@ import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {DollarSign, TrendingUp, Users, User, Briefcase, UserCheck} from 'lucide-react';
+import {DollarSign, TrendingUp, Users, Package, ArrowUp, ArrowDown, UserCheck} from 'lucide-react';
 import { getTransactions } from './finance/actions';
 import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,12 +14,11 @@ interface FinancialSummary {
   revenue: number;
   expenses: number;
   profit: number;
-  adminProfit: number;
-  pedroProfit: number;
+  productsSold: number;
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, adminProfit: 0, pedroProfit: 0 });
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0 });
   const [transactions, setTransactions] = React.useState<any[]>([]);
   const [newClientsCount, setNewClientsCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -62,7 +61,7 @@ export default function DashboardPage() {
   if (loading) {
       return (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
@@ -81,49 +80,80 @@ export default function DashboardPage() {
       )
   }
 
+  const profitPerPartner = summary.profit / 2;
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          title="Faturamento Bruto"
-          value={formatCurrency(summary.revenue)}
-          icon={DollarSign}
-          description="Total de vendas no mês"
+            title="Entradas"
+            value={formatCurrency(summary.revenue)}
+            icon={ArrowUp}
+            positive={true}
+            description="Total de vendas no mês"
         />
         <StatCard
-          title="Lucro Líquido (Geral)"
+            title="Saídas"
+            value={formatCurrency(summary.expenses)}
+            icon={ArrowDown}
+            positive={false}
+            description="Total de despesas no mês"
+        />
+        <StatCard
+          title="Vendas/Serviços"
+          value={String(summary.productsSold)}
+          icon={Package}
+          description="Ordens de serviço finalizadas"
+        />
+        <StatCard
+          title="Saldo Líquido"
           value={formatCurrency(summary.profit)}
           icon={TrendingUp}
           description="Faturamento - Despesas"
           positive={summary.profit >= 0}
         />
         <StatCard
-          title="Meu Saldo (Eduardo)"
-          value={formatCurrency(summary.adminProfit)}
-          icon={User}
-          description="Seu lucro líquido no mês"
-           positive={summary.adminProfit >= 0}
-        />
-        <StatCard
-          title="Saldo Pedro"
-          value={formatCurrency(summary.pedroProfit)}
-          icon={Briefcase}
-          description="Lucro líquido do sócio"
-           positive={summary.pedroProfit >= 0}
-        />
-        <StatCard
             title="Por Sócio (50%)"
-            value={formatCurrency(summary.profit / 2)}
+            value={formatCurrency(profitPerPartner)}
             icon={UserCheck}
             description="Metade do lucro líquido"
         />
-        <StatCard
-          title="Novos Clientes"
-          value={`+${newClientsCount}`}
-          icon={Users}
-          description="Clientes cadastrados no mês"
-        />
       </div>
+      
+       <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+            <CardHeader>
+              <CardTitle className="font-headline">Novos Clientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center gap-4">
+                    <Users className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                        <p className="text-3xl font-bold">+{newClientsCount}</p>
+                        <p className="text-sm text-muted-foreground">Clientes cadastrados no mês</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+         <Card>
+            <CardHeader>
+              <CardTitle className="font-headline">Resumo por Sócio</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-around">
+                    <div className='text-center'>
+                        <p className='text-sm font-medium text-muted-foreground'>Saldo Eduardo</p>
+                        <p className='text-2xl font-bold text-green-600'>{formatCurrency(summary.adminProfit)}</p>
+                    </div>
+                     <div className='text-center'>
+                        <p className='text-sm font-medium text-muted-foreground'>Saldo Pedro</p>
+                        <p className='text-2xl font-bold text-green-600'>{formatCurrency(summary.pedroProfit)}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Visão Geral Financeira</CardTitle>
