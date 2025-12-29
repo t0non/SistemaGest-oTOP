@@ -71,14 +71,16 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
     };
 
     const result = client
-      ? await updateClient(client.id, dataToSave)
-      : await addClient(dataToSave);
+      ? updateClient(client.id, dataToSave)
+      : addClient(dataToSave);
 
     if (result.success) {
       toast({
         title: 'Sucesso!',
         description: `Cliente ${client ? 'atualizado' : 'adicionado'} com sucesso.`,
       });
+      // Notify other components that storage has changed
+      window.dispatchEvent(new Event('local-storage-changed'));
       onSuccess();
     } else {
       toast({

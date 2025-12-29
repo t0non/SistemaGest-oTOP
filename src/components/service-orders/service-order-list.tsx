@@ -91,7 +91,7 @@ export function ServiceOrderList({
     setTimeout(() => { if (reciboRef.current) printRecibo(); }, 100);
   };
 
-  // === NOVA LÓGICA DO ORÇAMENTO ===
+  // === LÓGICA DO ORÇAMENTO ===
   const [orcamentoData, setOrcamentoData] = React.useState<any>(initialServiceOrders[0] || {});
   const orcamentoRef = React.useRef<HTMLDivElement>(null);
 
@@ -125,7 +125,7 @@ export function ServiceOrderList({
       setOsToFinalize(os);
   }
 
-  const onFinalizeConfirm = async () => {
+  const onFinalizeConfirm = () => {
     if (!osToFinalize || !osToFinalize.finalValue) return;
 
     const transactionData = {
@@ -136,13 +136,14 @@ export function ServiceOrderList({
         clientName: osToFinalize.clientName
     };
 
-    const result = await addTransaction(transactionData);
+    const result = addTransaction(transactionData);
 
     if (result.success) {
         toast({
             title: "Sucesso!",
             description: `Lançamento de R$ ${osToFinalize.finalValue.toFixed(2)} para a OS ${osToFinalize.id} criado.`,
         });
+        window.dispatchEvent(new Event('local-storage-changed'));
     } else {
         toast({
             variant: "destructive",

@@ -15,18 +15,26 @@ function ServiceOrdersContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
+  const fetchData = (query: string) => {
       setLoading(true);
-      const [soData, clientData] = await Promise.all([
-        getServiceOrders(query),
-        getClients(''),
-      ]);
+      const soData = getServiceOrders(query);
+      const clientData = getClients('');
       setServiceOrders(soData);
       setClients(clientData);
       setLoading(false);
-    }
-    fetchData();
+  }
+
+  useEffect(() => {
+    fetchData(query);
+
+    const handleStorageChange = () => fetchData(query);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
+
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('local-storage-changed', handleStorageChange);
+    };
   }, [query]);
 
   if (loading) {

@@ -1,36 +1,40 @@
+'use client';
 
-'use server';
-
-import {revalidatePath} from 'next/cache';
-import {z} from 'zod';
-import {mockServiceOrders} from '@/lib/mock-data';
-import type {ServiceOrder} from '@/lib/definitions';
+import { z } from 'zod';
+import type { ServiceOrder } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
-
-// Mock database
-let serviceOrders: ServiceOrder[] = [...mockServiceOrders];
 
 const serviceOrderSchema = z.object({
   clientId: z.string(),
   clientName: z.string(),
-  equipment: z.string().min(3, {message: 'O nome do equipamento é obrigatório.'}),
+  equipment: z.string().min(3, { message: 'O nome do equipamento é obrigatório.' }),
   problemDescription: z.string().optional(),
   status: z.enum(ServiceOrderStatus),
   finalValue: z.number().optional(),
   notes: z.string().optional(),
 });
 
-
 type ActionResponse = {
   success: boolean;
   message?: string;
+  data?: any;
 };
 
-// Simulate network delay
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const getServiceOrdersFromStorage = (): ServiceOrder[] => {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('serviceOrders');
+  return stored ? JSON.parse(stored) : [];
+};
 
-export async function getServiceOrders(query: string): Promise<ServiceOrder[]> {
-  await delay(500);
+const saveServiceOrdersToStorage = (orders: ServiceOrder[]) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('serviceOrders', JSON.stringify(orders));
+  window.dispatchEvent(new Event('local-storage-changed'));
+};
+
+
+export function getServiceOrders(query: string): ServiceOrder[] {
+  let serviceOrders = getServiceOrdersFromStorage();
 
   if (!query) {
     return serviceOrders.sort((a,b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
@@ -45,17 +49,20 @@ export async function getServiceOrders(query: string): Promise<ServiceOrder[]> {
   ).sort((a,b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
 }
 
-export async function addServiceOrder(
+export function addServiceOrder(
   data: z.infer<typeof serviceOrderSchema>
-): Promise<ActionResponse> {
-  await delay(1000);
+): ActionResponse {
   const validation = serviceOrderSchema.safeParse(data);
 
   if (!validation.success) {
-    return {success: false, message: 'Dados inválidos.'};
+    return { success: false, message: 'Dados inválidos.' };
   }
+  
+  let serviceOrders = getServiceOrdersFromStorage();
 
-  const newIdNumber = Math.max(...serviceOrders.map(o => parseInt(o.id.split('-')[1], 10))) + 1;
+  // Find the highest existing ID number to avoid collisions
+  const existingIds = serviceOrders.map(o => parseInt(o.id.split('-')[1] || '0', 10));
+  const newIdNumber = (existingIds.length > 0 ? Math.max(...existingIds) : 0) + 1;
 
   const newServiceOrder: ServiceOrder = {
     id: `OS-${newIdNumber}`,
@@ -64,31 +71,46 @@ export async function addServiceOrder(
   };
 
   serviceOrders.unshift(newServiceOrder);
-  revalidatePath('/dashboard/service-orders');
-  return {success: true, message: 'Ordem de Serviço adicionada com sucesso.'};
+  saveServiceOrdersToStorage(serviceOrders);
+  return { success: true, message: 'Ordem de Serviço adicionada com sucesso.', data: newServiceOrder };
 }
 
-export async function updateServiceOrder(
+export function updateServiceOrder(
   id: string,
   data: Partial<z.infer<typeof serviceOrderSchema>>
-): Promise<ActionResponse> {
-  await delay(1000);
-
+): ActionResponse {
+  
+  let serviceOrders = getServiceOrdersFromStorage();
   const osIndex = serviceOrders.findIndex((o) => o.id === id);
   if (osIndex === -1) {
-    return {success: false, message: 'Ordem de Serviço não encontrada.'};
+    return { success: false, message: 'Ordem de Serviço não encontrada.' };
   }
 
   const existingData = serviceOrders[osIndex];
-  const combinedData = { ...existingData, ...data, entryDate: existingData.entryDate };
   
+  // This combines the existing data with the partial update data.
+  // entryDate is preserved. clientName could be updated if clientId changes, but we disable clientId change on edit form.
+  const combinedData = { 
+      ...existingData, 
+      ...data, 
+      entryDate: existingData.entryDate,
+      clientName: data.clientName || existingData.clientName,
+      clientId: data.clientId || existingData.clientId
+    };
+  
+  // Re-validate the full object
   const validation = serviceOrderSchema.safeParse(combinedData);
   if (!validation.success) {
-    console.log(validation.error.flatten());
-    return {success: false, message: 'Dados de atualização inválidos.'};
+    console.error(validation.error.flatten());
+    return { success: false, message: 'Dados de atualização inválidos.' };
   }
 
-  serviceOrders[osIndex] = validation.data;
-  revalidatePath('/dashboard/service-orders');
-  return {success: true, message: 'Ordem de Serviço atualizada com sucesso.'};
+  const updatedOrder: ServiceOrder = {
+      ...existingData,
+      ...validation.data,
+  }
+
+  serviceOrders[osIndex] = updatedOrder;
+  saveServiceOrdersToStorage(serviceOrders);
+  return { success: true, message: 'Ordem de Serviço atualizada com sucesso.', data: updatedOrder };
 }

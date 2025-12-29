@@ -56,7 +56,7 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
       type: 'expense',
       description: '',
       amount: '',
-      clientId: '',
+      clientId: undefined, // Use undefined for placeholder to show
     },
   });
 
@@ -64,8 +64,6 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
     form.setValue('amount', formatCurrency(e.target.value));
   };
   
-  const selectedClient = form.watch('clientId');
-
   async function onSubmit(values: TransactionFormValues) {
     setIsSubmitting(true);
     
@@ -77,7 +75,7 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
       clientName: client?.name,
     };
 
-    const result = await addTransaction(dataToSave);
+    const result = addTransaction(dataToSave);
 
     if (result.success) {
       toast({

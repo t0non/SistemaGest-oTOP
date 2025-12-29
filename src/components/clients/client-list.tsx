@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -41,12 +40,12 @@ import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 
 import type {Client} from '@/lib/definitions';
 import {ClientForm} from './client-form';
-import {deleteClient} from '@/app/dashboard/clients/actions';
+import {deleteClient, getClients} from '@/app/dashboard/clients/actions';
 import {MoreHorizontal, PlusCircle, Trash2, Edit, MessageSquare} from 'lucide-react';
-import {Skeleton} from '../ui/skeleton';
 import { formatCPF, formatPhone } from '@/lib/formatters';
 
 export function ClientList({initialClients}: {initialClients: Client[]}) {
+  const [clients, setClients] = React.useState(initialClients);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedClient, setSelectedClient] = React.useState<Client | null>(
@@ -56,6 +55,12 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const {replace} = useRouter();
+
+  // Update state if initialClients prop changes
+  React.useEffect(() => {
+    setClients(initialClients);
+  }, [initialClients]);
+
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -87,16 +92,20 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
     window.open(`https://wa.me/55${cleanPhone}`, '_blank');
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedClient) return;
 
-    const result = await deleteClient(selectedClient.id);
+    const result = deleteClient(selectedClient.id);
 
     if (result.success) {
       toast({
         title: 'Sucesso!',
         description: 'Cliente excluído com sucesso.',
       });
+      // Manually update the state to reflect deletion
+      setClients(clients.filter(c => c.id !== selectedClient.id));
+      // Notify other components that storage has changed
+      window.dispatchEvent(new Event('local-storage-changed'));
     } else {
       toast({
         variant: 'destructive',
@@ -107,6 +116,12 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
     setIsAlertOpen(false);
     setSelectedClient(null);
   };
+  
+  const handleFormSuccess = () => {
+      setIsFormOpen(false);
+      // The parent component (`ClientsPage`) will handle refetching 
+      // because it listens to the 'local-storage-changed' event.
+  }
 
   return (
     <>
@@ -135,8 +150,8 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialClients.length > 0 ? (
-              initialClients.map((client) => (
+            {clients.length > 0 ? (
+              clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
@@ -204,7 +219,7 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
           </DialogHeader>
           <ClientForm
             client={selectedClient}
-            onSuccess={() => setIsFormOpen(false)}
+            onSuccess={handleFormSuccess}
           />
         </DialogContent>
       </Dialog>

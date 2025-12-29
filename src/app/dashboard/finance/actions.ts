@@ -1,29 +1,36 @@
-'use server';
+'use client';
 
-import {mockTransactions} from '@/lib/mock-data';
 import type {Transaction} from '@/lib/definitions';
-import {isSameMonth, parseISO, startOfMonth} from 'date-fns';
-import { revalidatePath } from 'next/cache';
+import {isSameMonth, parseISO} from 'date-fns';
 
-// Mock database
-let transactions: Transaction[] = [...mockTransactions];
+const getTransactionsFromStorage = (): Transaction[] => {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('transactions');
+  try {
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+};
 
-// Simulate network delay
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const saveTransactionsToStorage = (transactions: Transaction[]) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('transactions', JSON.stringify(transactions));
+  window.dispatchEvent(new Event('local-storage-changed')); // Notify other components
+};
 
-export async function getTransactions(): Promise<Transaction[]> {
-  await delay(300);
-  // In a real app, you would fetch from Firestore, probably ordered by date
-  // const q = query(collection(db, 'transactions'), orderBy('date', 'desc'));
+
+export function getTransactions(): Transaction[] {
+  const transactions = getTransactionsFromStorage();
   return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-export async function getMonthlyFinancialSummary(): Promise<{
+export function getMonthlyFinancialSummary(): {
   revenue: number;
   expenses: number;
   profit: number;
-}> {
-  await delay(300);
+} {
+  const transactions = getTransactionsFromStorage();
   const today = new Date();
 
   const monthlyTransactions = transactions.filter((t) =>
@@ -43,18 +50,16 @@ export async function getMonthlyFinancialSummary(): Promise<{
   return {revenue, expenses, profit};
 }
 
-export async function addTransaction(data: Omit<Transaction, 'id' | 'date'>): Promise<{success: boolean; message?: string;}> {
-    await delay(1000);
-    
+export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {
     try {
+        let transactions = getTransactionsFromStorage();
         const newTransaction: Transaction = {
-            id: `t${transactions.length + 1}`,
+            id: `t-${Date.now()}`,
             date: new Date().toISOString(),
             ...data
         };
         transactions.unshift(newTransaction);
-        revalidatePath('/dashboard/finance');
-        revalidatePath('/dashboard');
+        saveTransactionsToStorage(transactions);
         return { success: true, message: "Transação adicionada com sucesso." };
     } catch(e) {
         return { success: false, message: "Ocorreu um erro ao adicionar a transação." };

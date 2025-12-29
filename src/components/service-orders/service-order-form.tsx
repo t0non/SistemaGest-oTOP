@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,7 @@ import { useState } from 'react';
 import { formatCurrency, unformatCurrency } from '@/lib/formatters';
 
 const serviceOrderFormSchema = z.object({
-  clientId: z.string({ required_error: 'Selecione um cliente.' }),
+  clientId: z.string({ required_error: 'Selecione um cliente.' }).min(1, { message: 'Selecione um cliente.' }),
   equipment: z.string().min(3, { message: 'O nome do equipamento é obrigatório.' }),
   problemDescription: z.string().optional(),
   status: z.enum(ServiceOrderStatus, { required_error: 'Selecione um status.' }),
@@ -59,7 +58,7 @@ export function ServiceOrderForm({
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderFormSchema),
     defaultValues: {
-      clientId: serviceOrder?.clientId || '',
+      clientId: serviceOrder?.clientId || undefined,
       equipment: serviceOrder?.equipment || '',
       problemDescription: serviceOrder?.problemDescription || '',
       status: serviceOrder?.status || 'Em Análise',
@@ -92,8 +91,8 @@ export function ServiceOrderForm({
     };
     
     const result = serviceOrder?.id
-      ? await updateServiceOrder(serviceOrder.id, dataToSave)
-      : await addServiceOrder(dataToSave);
+      ? updateServiceOrder(serviceOrder.id, dataToSave)
+      : addServiceOrder(dataToSave as any); // Cast because addServiceOrder expects full object
 
     if (result.success) {
       toast({

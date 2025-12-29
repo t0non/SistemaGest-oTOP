@@ -1,14 +1,55 @@
+'use client'
+
+import * as React from 'react';
 import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {DollarSign, TrendingUp, Users} from 'lucide-react';
-import { mockTransactions } from '@/lib/mock-data';
+import { getTransactions } from './finance/actions';
+import { getClients } from './clients/actions';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function DashboardPage() {
-  // In a real app, you would fetch this data from your database.
-  const {revenue, expenses, profit} = await getMonthlyFinancialSummary();
-  const newClients = 5; // Mock data
+interface FinancialSummary {
+  revenue: number;
+  expenses: number;
+  profit: number;
+}
+
+export default function DashboardPage() {
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0 });
+  const [transactions, setTransactions] = React.useState<any[]>([]);
+  const [newClientsCount, setNewClientsCount] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchData = React.useCallback(() => {
+    setLoading(true);
+    const summaryData = getMonthlyFinancialSummary();
+    const transactionsData = getTransactions();
+    
+    const allClients = getClients('');
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const newClients = allClients.filter(c => new Date(c.createdAt) >= firstDayOfMonth);
+
+    setSummary(summaryData);
+    setTransactions(transactionsData);
+    setNewClientsCount(newClients.length);
+    setLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+
+    const handleStorageChange = () => fetchData();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-changed', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('local-storage-changed', handleStorageChange);
+    };
+  }, [fetchData]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
@@ -16,25 +57,45 @@ export default async function DashboardPage() {
       currency: 'BRL',
     }).format(value);
 
+  if (loading) {
+      return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+            </div>
+            <Card>
+                <CardHeader>
+                <CardTitle className="font-headline">Visão Geral Financeira</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-[350px] w-full" />
+                </CardContent>
+            </Card>
+          </div>
+      )
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Faturamento do Mês"
-          value={formatCurrency(revenue)}
+          value={formatCurrency(summary.revenue)}
           icon={DollarSign}
           description="Total de vendas e serviços"
         />
         <StatCard
           title="Lucro Líquido"
-          value={formatCurrency(profit)}
+          value={formatCurrency(summary.profit)}
           icon={TrendingUp}
           description="Faturamento - Despesas"
-          positive={profit >= 0}
+          positive={summary.profit >= 0}
         />
         <StatCard
           title="Novos Clientes"
-          value={`+${newClients}`}
+          value={`+${newClientsCount}`}
           icon={Users}
           description="Clientes cadastrados no mês"
         />
@@ -44,8 +105,7 @@ export default async function DashboardPage() {
           <CardTitle className="font-headline">Visão Geral Financeira</CardTitle>
         </CardHeader>
         <CardContent>
-            {/* The chart expects data grouped by day, which we are simulating here */}
-            <OverviewChart data={mockTransactions} />
+            <OverviewChart data={transactions} />
         </CardContent>
       </Card>
     </div>

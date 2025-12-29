@@ -1,12 +1,7 @@
-'use server';
+'use client';
 
-import {revalidatePath} from 'next/cache';
-import {z} from 'zod';
-import {mockClients} from '@/lib/mock-data';
-import type {Client} from '@/lib/definitions';
-
-// Mock database
-let clients: Client[] = [...mockClients];
+import { z } from 'zod';
+import type { Client } from '@/lib/definitions';
 
 const clientSchema = z.object({
   name: z.string(),
@@ -19,88 +14,83 @@ const clientSchema = z.object({
 type ActionResponse = {
   success: boolean;
   message?: string;
+  data?: any;
 };
 
-// Simulate network delay
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const getClientsFromStorage = (): Client[] => {
+  if (typeof window === 'undefined') return [];
+  const storedClients = localStorage.getItem('clients');
+  return storedClients ? JSON.parse(storedClients) : [];
+};
 
-export async function getClients(query: string): Promise<Client[]> {
-  await delay(500); // Simulate DB query time
+const saveClientsToStorage = (clients: Client[]) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('clients', JSON.stringify(clients));
+};
 
-  // In a real app, you would query Firestore here.
-  // e.g., const q = query(collection(db, 'clients'), where('name', '>=', query), ...);
-  // const querySnapshot = await getDocs(q);
-  // return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-
+export function getClients(query: string): Client[] {
+  let clients = getClientsFromStorage();
   if (!query) {
-    return clients;
+    return clients.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
-
   const lowercasedQuery = query.toLowerCase();
   return clients.filter(
     (client) =>
       client.name.toLowerCase().includes(lowercasedQuery) ||
       client.cpf.includes(lowercasedQuery)
-  );
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function addClient(
+export function addClient(
   data: z.infer<typeof clientSchema>
-): Promise<ActionResponse> {
-  await delay(1000);
+): ActionResponse {
   const validation = clientSchema.safeParse(data);
 
   if (!validation.success) {
-    return {success: false, message: 'Dados inválidos.'};
+    return { success: false, message: 'Dados inválidos.' };
   }
-  // In a real app, you would use addDoc to add to Firestore
-  // await addDoc(collection(db, 'clients'), newClientData);
+
+  let clients = getClientsFromStorage();
   const newClient: Client = {
-    id: (clients.length + 1).toString(),
+    id: `client-${Date.now()}`,
     ...validation.data,
     createdAt: new Date().toISOString(),
   };
 
   clients.unshift(newClient);
-  revalidatePath('/dashboard/clients');
-  return {success: true, message: 'Cliente adicionado com sucesso.'};
+  saveClientsToStorage(clients);
+  return { success: true, message: 'Cliente adicionado com sucesso.', data: newClient };
 }
 
-export async function updateClient(
+export function updateClient(
   id: string,
   data: z.infer<typeof clientSchema>
-): Promise<ActionResponse> {
-  await delay(1000);
+): ActionResponse {
   const validation = clientSchema.safeParse(data);
   if (!validation.success) {
-    return {success: false, message: 'Dados inválidos.'};
+    return { success: false, message: 'Dados inválidos.' };
   }
 
-  // In a real app, you would use updateDoc in Firestore
-  // const clientRef = doc(db, 'clients', id);
-  // await updateDoc(clientRef, data);
-
+  let clients = getClientsFromStorage();
   const clientIndex = clients.findIndex((c) => c.id === id);
   if (clientIndex === -1) {
-    return {success: false, message: 'Cliente não encontrado.'};
+    return { success: false, message: 'Cliente não encontrado.' };
   }
 
-  clients[clientIndex] = {...clients[clientIndex], ...validation.data};
-  revalidatePath('/dashboard/clients');
-  return {success: true, message: 'Cliente atualizado com sucesso.'};
+  const updatedClient = { ...clients[clientIndex], ...validation.data };
+  clients[clientIndex] = updatedClient;
+  saveClientsToStorage(clients);
+  return { success: true, message: 'Cliente atualizado com sucesso.', data: updatedClient };
 }
 
-export async function deleteClient(id: string): Promise<ActionResponse> {
-  await delay(1000);
-  // In a real app, you would use deleteDoc in Firestore
-  // await deleteDoc(doc(db, 'clients', id));
-
+export function deleteClient(id: string): ActionResponse {
+  let clients = getClientsFromStorage();
   const clientIndex = clients.findIndex((c) => c.id === id);
   if (clientIndex === -1) {
-    return {success: false, message: 'Cliente não encontrado.'};
+    return { success: false, message: 'Cliente não encontrado.' };
   }
 
   clients.splice(clientIndex, 1);
-  revalidatePath('/dashboard/clients');
-  return {success: true, message: 'Cliente excluído com sucesso.'};
+  saveClientsToStorage(clients);
+  return { success: true, message: 'Cliente excluído com sucesso.' };
 }

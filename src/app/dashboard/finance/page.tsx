@@ -29,6 +29,7 @@ import type { Transaction } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { getClients } from '../clients/actions';
 import type { Client } from '@/lib/definitions';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface FinancialSummary {
   revenue: number;
@@ -45,18 +46,17 @@ export default function FinancePage() {
 
   const { toast } = useToast();
 
-  const fetchData = React.useCallback(async () => {
-    setLoading(true);
+  const fetchData = React.useCallback(() => {
     try {
-      const [summaryData, transactionsData, clientsData] = await Promise.all([
-        getMonthlyFinancialSummary(),
-        getTransactions(),
-        getClients(''), // Fetch all clients for the form
-      ]);
+      const summaryData = getMonthlyFinancialSummary();
+      const transactionsData = getTransactions();
+      const clientsData = getClients('');
+      
       setSummary(summaryData);
       setTransactions(transactionsData);
       setClients(clientsData);
     } catch (error) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Erro ao buscar dados',
@@ -69,6 +69,17 @@ export default function FinancePage() {
 
   React.useEffect(() => {
     fetchData();
+    
+    // Listen for storage changes to update UI
+    const handleStorageChange = () => fetchData();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('local-storage-changed', handleStorageChange);
+    };
+
   }, [fetchData]);
 
   const handleSuccess = () => {
@@ -103,26 +114,34 @@ export default function FinancePage() {
         </div>
 
         {/* Resumo Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="Entradas no Mês"
-            value={formatCurrency(summary.revenue)}
-            icon={ArrowUp}
-            positive={true}
-          />
-          <StatCard
-            title="Saídas no Mês"
-            value={formatCurrency(summary.expenses)}
-            icon={ArrowDown}
-            positive={false}
-          />
-          <StatCard
-            title="Saldo Líquido"
-            value={formatCurrency(summary.profit)}
-            icon={DollarSign}
-            positive={summary.profit >= 0}
-          />
-        </div>
+        {loading ? (
+            <div className="grid gap-4 md:grid-cols-3">
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+            </div>
+        ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+            <StatCard
+                title="Entradas no Mês"
+                value={formatCurrency(summary.revenue)}
+                icon={ArrowUp}
+                positive={true}
+            />
+            <StatCard
+                title="Saídas no Mês"
+                value={formatCurrency(summary.expenses)}
+                icon={ArrowDown}
+                positive={false}
+            />
+            <StatCard
+                title="Saldo Líquido"
+                value={formatCurrency(summary.profit)}
+                icon={DollarSign}
+                positive={summary.profit >= 0}
+            />
+            </div>
+        )}
 
 
         <div className="rounded-md border">
@@ -139,7 +158,7 @@ export default function FinancePage() {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    Carregando...
+                    <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               ) : transactions.length > 0 ? (
@@ -183,7 +202,7 @@ export default function FinancePage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    Nenhuma transação encontrada no período.
+                    Nenhuma transação encontrada.
                   </TableCell>
                 </TableRow>
               )}
