@@ -5,7 +5,7 @@ import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {DollarSign, TrendingUp, Users} from 'lucide-react';
+import {DollarSign, TrendingUp, Users, User, Briefcase} from 'lucide-react';
 import { getTransactions } from './finance/actions';
 import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,10 +14,12 @@ interface FinancialSummary {
   revenue: number;
   expenses: number;
   profit: number;
+  adminProfit: number;
+  pedroProfit: number;
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0 });
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, adminProfit: 0, pedroProfit: 0 });
   const [transactions, setTransactions] = React.useState<any[]>([]);
   const [newClientsCount, setNewClientsCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -60,7 +62,9 @@ export default function DashboardPage() {
   if (loading) {
       return (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
@@ -79,19 +83,33 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
-          title="Faturamento do Mês"
+          title="Faturamento Bruto"
           value={formatCurrency(summary.revenue)}
           icon={DollarSign}
-          description="Total de vendas e serviços"
+          description="Total de vendas no mês"
         />
         <StatCard
-          title="Lucro Líquido"
+          title="Lucro Líquido (Geral)"
           value={formatCurrency(summary.profit)}
           icon={TrendingUp}
           description="Faturamento - Despesas"
           positive={summary.profit >= 0}
+        />
+        <StatCard
+          title="Seu Saldo (Admin)"
+          value={formatCurrency(summary.adminProfit)}
+          icon={User}
+          description="Seu lucro líquido no mês"
+           positive={summary.adminProfit >= 0}
+        />
+        <StatCard
+          title="Saldo Pedro"
+          value={formatCurrency(summary.pedroProfit)}
+          icon={Briefcase}
+          description="Lucro líquido do sócio"
+           positive={summary.pedroProfit >= 0}
         />
         <StatCard
           title="Novos Clientes"

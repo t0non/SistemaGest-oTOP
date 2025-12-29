@@ -42,6 +42,8 @@ export function getMonthlyFinancialSummary(): {
   expenses: number;
   profit: number;
   productsSold: number;
+  adminProfit: number;
+  pedroProfit: number;
 } {
   const transactions = getTransactionsFromStorage();
   const today = new Date();
@@ -50,24 +52,40 @@ export function getMonthlyFinancialSummary(): {
     isSameMonth(parseISO(t.date), today)
   );
 
-  const revenue = monthlyTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+  let revenue = 0;
+  let expenses = 0;
+  let adminProfit = 0;
+  let pedroProfit = 0;
 
-  const expenses = monthlyTransactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => {
-        if (t.owner === 'split') {
-            return sum + t.amount / 2; // Apenas metade da despesa dividida conta no geral
-        }
-        return sum + t.amount;
-    }, 0);
+  monthlyTransactions.forEach((t) => {
+    if (t.type === 'income') {
+      revenue += t.amount;
+      if (t.owner === 'admin') {
+        adminProfit += t.amount;
+      } else if (t.owner === 'pedro') {
+        pedroProfit += t.amount;
+      } else if (t.owner === 'split') {
+        adminProfit += t.amount / 2;
+        pedroProfit += t.amount / 2;
+      }
+    } else { // expense
+      expenses += t.amount;
+      if (t.owner === 'admin') {
+        adminProfit -= t.amount;
+      } else if (t.owner === 'pedro') {
+        pedroProfit -= t.amount;
+      } else if (t.owner === 'split') {
+        adminProfit -= t.amount / 2;
+        pedroProfit -= t.amount / 2;
+      }
+    }
+  });
+
 
   const profit = revenue - expenses;
-
   const productsSold = monthlyTransactions.filter((t) => t.type === 'income').length;
 
-  return {revenue, expenses, profit, productsSold};
+  return {revenue, expenses, profit, productsSold, adminProfit, pedroProfit};
 }
 
 export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {
