@@ -15,10 +15,12 @@ interface FinancialSummary {
   expenses: number;
   profit: number;
   productsSold: number;
+  adminProfit: number;
+  pedroProfit: number;
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0 });
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
   const [transactions, setTransactions] = React.useState<any[]>([]);
   const [newClientsCount, setNewClientsCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
