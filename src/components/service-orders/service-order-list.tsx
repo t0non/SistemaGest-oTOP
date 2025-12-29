@@ -77,8 +77,19 @@ export function ServiceOrderList({
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
+    documentTitle: `OS-${osToPrint?.id?.slice(0, 6) || 'Recibo'}`,
     onAfterPrint: () => setOsToPrint(null),
+    removeAfterPrint: true
   });
+  
+  React.useEffect(() => {
+    if (osToPrint) {
+      const timeout = setTimeout(() => {
+        handlePrint();
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [osToPrint, handlePrint]);
 
   const onPrint = (order: ServiceOrder) => {
     const client = clients.find(c => c.id === order.clientId);
@@ -88,13 +99,6 @@ export function ServiceOrderList({
     }
     setOsToPrint(order);
   }
-
-  React.useEffect(() => {
-    if (osToPrint) {
-      handlePrint();
-    }
-  }, [osToPrint, handlePrint]);
-
 
   React.useEffect(() => {
     setEditingOS(null);
@@ -158,7 +162,7 @@ export function ServiceOrderList({
 
   return (
     <>
-      <div style={{ display: "none" }}>
+      <div className="hidden">
         {osToPrint && clientForPrint && (
             <PrintableOrder ref={printRef} order={osToPrint} client={clientForPrint} />
         )}
