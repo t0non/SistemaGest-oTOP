@@ -163,7 +163,6 @@ export function TransactionForm({ clients, onSuccess }: TransactionFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name}
