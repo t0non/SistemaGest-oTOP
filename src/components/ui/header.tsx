@@ -16,7 +16,7 @@ export function Header() {
   ];
 
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-50">
+    <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-40">
       
       {/* 1. Lado Esquerdo: Logo e Navegação */}
       <div className="flex items-center gap-8">
@@ -31,8 +31,8 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`transition-colors hover:text-blue-600 ${
-                  isActive ? 'text-blue-600 font-semibold' : 'text-gray-500'
+                className={`transition-colors hover:text-primary ${
+                  isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
                 }`}
               >
                 {link.name}

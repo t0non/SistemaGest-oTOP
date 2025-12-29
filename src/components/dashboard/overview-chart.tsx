@@ -17,12 +17,11 @@ interface OverviewChartProps {
   data: any[];
 }
 
-// Tooltip personalizado e CLEAN
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-4 border rounded-xl shadow-lg outline-none">
-        <p className="text-sm font-bold text-gray-700 mb-2">{label}</p>
+      <div className="bg-card p-4 border rounded-xl shadow-lg outline-none">
+        <p className="text-sm font-bold text-card-foreground mb-2">{label}</p>
         <div className="space-y-1 text-sm">
             {payload.map((entry: any, index: number) => (
                 <div key={index} style={{ color: entry.color }} className="flex justify-between gap-4 font-medium">
@@ -68,12 +67,12 @@ export function OverviewChart({ data }: OverviewChartProps) {
           >
             <defs>
               <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#16a34a" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#16a34a" stopOpacity={0.3}/>
+                <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3}/>
               </linearGradient>
               <linearGradient id="colorExpenseBar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#dc2626" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#dc2626" stopOpacity={0.3}/>
+                <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3}/>
               </linearGradient>
             </defs>
 
@@ -123,10 +122,10 @@ export function OverviewChart({ data }: OverviewChartProps) {
                 type="monotone"
                 dataKey="saldo" 
                 name="Saldo Líquido" 
-                stroke="#2563eb"
+                stroke="hsl(var(--primary))"
                 strokeWidth={4}
-                dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                activeDot={{ r: 8, strokeWidth: 0 }}
+                dot={{ r: 4, strokeWidth: 2, fill: 'hsl(var(--card))' }}
+                activeDot={{ r: 8, strokeWidth: 0, stroke: 'hsl(var(--primary))' }}
             />
 
           </ComposedChart>

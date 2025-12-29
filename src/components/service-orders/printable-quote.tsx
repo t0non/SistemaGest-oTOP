@@ -1,23 +1,32 @@
 'use client';
 
 import React, { forwardRef } from 'react';
+import type { ServiceOrder } from '@/lib/definitions';
+import { formatCPF } from '@/lib/formatters';
 
-export const PrintableQuote = forwardRef<HTMLDivElement, any>(
-  ({ data = {} }, ref) => {
+interface PrintableQuoteProps {
+    data: ServiceOrder;
+}
+
+export const PrintableQuote = forwardRef<HTMLDivElement, PrintableQuoteProps>(
+  ({ data = {} as ServiceOrder }, ref) => {
     // Dados padrão para não quebrar
     const id = data.id || "0000";
-    const clientName = data.clientName || "Cliente";
-    const date = new Date().toLocaleDateString('pt-BR');
+    const clientName = data.clientName || "Consumidor Final";
+    const date = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
     
     // Se não tiver itens detalhados, simula um item com a descrição geral
-    const items = data.items || [
-        { qtd: 1, desc: data.equipment + " - " + (data.problemDescription || "Orçamento"), price: data.finalValue || 0 }
-    ];
+    const mainItem = {
+        qtd: "01",
+        desc: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
+        unitPrice: data.finalValue || 0,
+        total: data.finalValue || 0
+    };
 
-    // Preenche linhas vazias para ficar igual ao papel da foto
-    const emptyRows = Math.max(0, 12 - items.length);
+    // Preenche linhas vazias para ficar igual ao papel da foto (Total de 12 linhas na tabela)
+    const emptyRows = Array(10).fill(null);
 
-    const total = items.reduce((acc: number, item: any) => acc + (item.price * item.qtd), 0);
+    const total = mainItem.total;
 
     return (
       <div ref={ref} className="bg-white text-black font-sans w-[210mm] min-h-[297mm] p-10 relative text-sm">
@@ -39,7 +48,7 @@ export const PrintableQuote = forwardRef<HTMLDivElement, any>(
         {/* DADOS DO CLIENTE */}
         <div className="border border-black p-2 mb-4">
             <p><span className="font-bold">CLIENTE:</span> {clientName}</p>
-            <p className="mt-1"><span className="font-bold">CPF/CNPJ:</span> {data.clientCpf || "_______________________"}</p>
+            {data.clientCpf && <p className="mt-1"><span className="font-bold">CPF/CNPJ:</span> {formatCPF(data.clientCpf)}</p>}
         </div>
 
         {/* TABELA DE ITENS */}
@@ -53,14 +62,12 @@ export const PrintableQuote = forwardRef<HTMLDivElement, any>(
                 </tr>
             </thead>
             <tbody>
-                {items.map((item: any, index: number) => (
-                    <tr key={index}>
-                        <td className="border border-black p-1 text-center">{item.qtd}</td>
-                        <td className="border border-black p-1">{item.desc}</td>
-                        <td className="border border-black p-1 text-right">R$ {Number(item.price).toFixed(2)}</td>
-                        <td className="border border-black p-1 text-right">R$ {Number(item.price * item.qtd).toFixed(2)}</td>
-                    </tr>
-                ))}
+                <tr>
+                    <td className="border border-black p-1 text-center">{mainItem.qtd}</td>
+                    <td className="border border-black p-1">{mainItem.desc}</td>
+                    <td className="border border-black p-1 text-right">R$ {Number(mainItem.unitPrice).toFixed(2)}</td>
+                    <td className="border border-black p-1 text-right">R$ {Number(mainItem.total).toFixed(2)}</td>
+                </tr>
                 {/* Linhas Vazias para preencher o papel */}
                 {[...Array(emptyRows)].map((_, i) => (
                     <tr key={`empty-${i}`} className="h-6">
