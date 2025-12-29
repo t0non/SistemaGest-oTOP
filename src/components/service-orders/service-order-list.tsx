@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -79,18 +78,23 @@ export function ServiceOrderList({
   const printRef = React.useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    contentRef: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Recibo-${orderToPrint?.id || 'OS'}`,
+    onPrintError: (error) => console.error("Erro interno impressão:", error),
   });
 
-  const dispararImpressao = (order: ServiceOrder, e?: React.MouseEvent | React.SyntheticEvent) => {
+  const dispararImpressao = (order: ServiceOrder, e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    
     setOrderToPrint(order);
+
     setTimeout(() => {
       if (printRef.current) {
         handlePrint();
+      } else {
+        console.error("ERRO: O componente de recibo não foi encontrado no DOM.");
       }
-    }, 200);
+    }, 100);
   };
 
 
@@ -287,7 +291,7 @@ export function ServiceOrderList({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div style={{ overflow: "hidden", height: 0, width: 0, position: "absolute" }}>
+      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px' }}>
          <PrintableOrder 
             ref={printRef} 
             data={orderToPrint} 
