@@ -3,6 +3,7 @@
 import {mockTransactions} from '@/lib/mock-data';
 import type {Transaction} from '@/lib/definitions';
 import {isSameMonth, parseISO, startOfMonth} from 'date-fns';
+import { revalidatePath } from 'next/cache';
 
 // Mock database
 let transactions: Transaction[] = [...mockTransactions];
@@ -40,4 +41,22 @@ export async function getMonthlyFinancialSummary(): Promise<{
   const profit = revenue - expenses;
 
   return {revenue, expenses, profit};
+}
+
+export async function addTransaction(data: Omit<Transaction, 'id' | 'date'>): Promise<{success: boolean; message?: string;}> {
+    await delay(1000);
+    
+    try {
+        const newTransaction: Transaction = {
+            id: `t${transactions.length + 1}`,
+            date: new Date().toISOString(),
+            ...data
+        };
+        transactions.unshift(newTransaction);
+        revalidatePath('/dashboard/finance');
+        revalidatePath('/dashboard');
+        return { success: true, message: "Transação adicionada com sucesso." };
+    } catch(e) {
+        return { success: false, message: "Ocorreu um erro ao adicionar a transação." };
+    }
 }
