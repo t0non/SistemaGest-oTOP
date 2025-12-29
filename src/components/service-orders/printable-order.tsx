@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -15,7 +16,7 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
     const entryDate = data.entryDate ? new Date(data.entryDate).toLocaleDateString() : new Date().toLocaleDateString();
 
     return (
-      <div ref={ref} className="p-8 bg-white text-black font-sans hidden print:block">
+      <div ref={ref} className="p-8 bg-white text-black font-sans print:block">
         {/* Cabeçalho */}
         <div className="border-b-2 border-gray-300 pb-4 mb-6">
           <h1 className="text-2xl font-bold uppercase">TechStore BH</h1>

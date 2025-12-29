@@ -59,29 +59,6 @@ const statusColors: Record<ServiceOrderStatusType, string> = {
     'Finalizado/Entregue': 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20',
 };
 
-const PrintMenuItem = ({ order, clients }: { order: ServiceOrder; clients: Client[] }) => {
-    const printRef = React.useRef<HTMLDivElement>(null);
-    const client = clients.find(c => c.id === order.clientId);
-    const orderWithCpf = { ...order, clientCpf: client?.cpf };
-
-    const handlePrint = useReactToPrint({
-      contentRef: () => printRef.current,
-      documentTitle: `Recibo-${order.id || 'OS'}`,
-      removeAfterPrint: true,
-    });
-  
-    return (
-      <>
-        <DropdownMenuItem onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir Recibo
-        </DropdownMenuItem>
-        <div className="hidden">
-          <PrintableOrder ref={printRef} data={orderWithCpf} />
-        </div>
-      </>
-    );
-};
 
 export function ServiceOrderList({
   initialServiceOrders,
@@ -92,11 +69,30 @@ export function ServiceOrderList({
 }) {
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
+  const [orderToPrint, setOrderToPrint] = React.useState<ServiceOrder>(initialServiceOrders[0] || {} as ServiceOrder);
   
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+  
+  const printRef = React.useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: () => printRef.current,
+    documentTitle: `Recibo-${orderToPrint?.id || 'OS'}`,
+  });
+
+  const dispararImpressao = (order: ServiceOrder, e?: React.MouseEvent | React.SyntheticEvent) => {
+    if (e) e.preventDefault();
+    setOrderToPrint(order);
+    setTimeout(() => {
+      if (printRef.current) {
+        handlePrint();
+      }
+    }, 200);
+  };
+
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -176,6 +172,8 @@ export function ServiceOrderList({
           <TableBody>
             {initialServiceOrders.length > 0 ? (
               initialServiceOrders.map((os) => {
+                const client = clients.find(c => c.id === os.clientId);
+                const orderWithCpf = { ...os, clientCpf: client?.cpf };
                 return (
                   <TableRow key={os.id}>
                     <TableCell className="font-bold hidden sm:table-cell">{os.id}</TableCell>
@@ -205,8 +203,15 @@ export function ServiceOrderList({
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
-                          
-                          <PrintMenuItem order={os} clients={clients} />
+
+                           <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            onClick={(e) => dispararImpressao(orderWithCpf, e)}
+                            className="cursor-pointer"
+                           >
+                              <Printer className="mr-2 h-4 w-4" />
+                              Imprimir Recibo
+                          </DropdownMenuItem>
 
                           {os.status === 'Finalizado/Entregue' && os.finalValue && os.finalValue > 0 && (
                               <DropdownMenuItem onClick={() => handleFinalize(os)}>
@@ -282,10 +287,12 @@ export function ServiceOrderList({
         </AlertDialogContent>
       </AlertDialog>
 
+      <div style={{ overflow: "hidden", height: 0, width: 0, position: "absolute" }}>
+         <PrintableOrder 
+            ref={printRef} 
+            data={orderToPrint} 
+         />
+      </div>
     </>
   );
 }
-
-    
-
-    
