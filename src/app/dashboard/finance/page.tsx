@@ -161,7 +161,7 @@ export default function FinancePage() {
   };
   
   const ownerMap = {
-    admin: { icon: User, label: 'Admin', color: 'text-blue-500' },
+    admin: { icon: User, label: 'Eduardo', color: 'text-blue-500' },
     pedro: { icon: User, label: 'Pedro', color: 'text-purple-500' },
     split: { icon: Users, label: 'Dividido', color: 'text-orange-500' },
   }

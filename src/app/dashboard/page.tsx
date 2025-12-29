@@ -98,7 +98,7 @@ export default function DashboardPage() {
           positive={summary.profit >= 0}
         />
         <StatCard
-          title="Seu Saldo (Admin)"
+          title="Meu Saldo (Eduardo)"
           value={formatCurrency(summary.adminProfit)}
           icon={User}
           description="Seu lucro líquido no mês"

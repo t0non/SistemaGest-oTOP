@@ -118,7 +118,7 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
                     <FormControl>
                       <RadioGroupItem value="admin" />
                     </FormControl>
-                    <FormLabel className="font-normal">Admin</FormLabel>
+                    <FormLabel className="font-normal">Eduardo</FormLabel>
                   </FormItem>
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
