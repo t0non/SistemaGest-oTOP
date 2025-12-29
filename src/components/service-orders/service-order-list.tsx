@@ -75,16 +75,17 @@ export function ServiceOrderList({
   const { replace } = useRouter();
 
   const handlePrint = useReactToPrint({
-    contentRef: printRef,
+    contentRef: () => printRef.current,
     documentTitle: osToPrint ? `Recibo-${osToPrint.id.slice(0, 6)}` : 'Recibo',
     onAfterPrint: () => setOsToPrint(null),
   });
 
   React.useEffect(() => {
-    if (osToPrint) {
-      handlePrint();
+    if (osToPrint && handlePrint) {
+        handlePrint();
     }
   }, [osToPrint, handlePrint]);
+
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -135,6 +136,16 @@ export function ServiceOrderList({
   const handleOpenForm = (os: ServiceOrder | 'new') => {
       setEditingOS(os === 'new' ? {} as ServiceOrder : os);
   }
+  
+  const onPrintClick = (e: React.MouseEvent, order: ServiceOrder, client: Client | undefined) => {
+    e.preventDefault();
+    if(client) {
+      setOsToPrint({...order, clientCpf: client.cpf});
+    } else {
+      setOsToPrint(order);
+    }
+  }
+
 
   return (
     <>
@@ -193,7 +204,7 @@ export function ServiceOrderList({
                             Editar
                           </DropdownMenuItem>
                           
-                           <DropdownMenuItem onClick={() => client && setOsToPrint({...os, clientCpf: client.cpf})}>
+                           <DropdownMenuItem onClick={(e) => onPrintClick(e as unknown as React.MouseEvent, os, client)}>
                               <Printer className="mr-2 h-4 w-4" />
                               Imprimir Recibo
                           </DropdownMenuItem>
