@@ -64,7 +64,6 @@ export function ServiceOrderList({
   clients: Client[];
 }) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [isFinalizeAlertOpen, setIsFinalizeAlertOpen] = React.useState(false);
   const [selectedOS, setSelectedOS] = React.useState<ServiceOrder | null>(null);
   const { toast } = useToast();
