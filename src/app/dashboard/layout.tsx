@@ -1,3 +1,5 @@
+'use client';
+
 import {Bot, ChevronDown, User as UserIcon} from 'lucide-react';
 import Link from 'next/link';
 
@@ -8,7 +10,7 @@ import {SidebarNav} from '@/components/layout/sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
