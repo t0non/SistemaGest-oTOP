@@ -73,6 +73,12 @@ export function ServiceOrderList({
   // Garante que o modal comece fechado no primeiro render
   React.useEffect(() => {
     setEditingOS(null);
+    
+    // Cleanup ao sair da tela para garantir que o body não fique travado
+    return () => {
+      document.body.style.pointerEvents = "";
+      document.body.removeAttribute("data-scroll-locked");
+    };
   }, []);
 
   const handleSearch = useDebouncedCallback((term: string) => {
@@ -207,6 +213,11 @@ export function ServiceOrderList({
         onOpenChange={(isOpen) => {
             if (!isOpen) {
                 setEditingOS(null);
+                 // HACK DE SEGURANÇA: Remove a trava do corpo manualmente
+                setTimeout(() => {
+                  document.body.style.pointerEvents = "";
+                  document.body.removeAttribute("data-scroll-locked");
+                }, 100); 
             }
         }}
       >
