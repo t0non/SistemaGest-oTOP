@@ -33,6 +33,13 @@ export const ServiceOrderStatus = [
 
 export type ServiceOrderStatus = (typeof ServiceOrderStatus)[number];
 
+export type ServiceOrderItem = {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+};
+
 export type ServiceOrder = {
     id: string;
     clientId: string;
@@ -44,4 +51,5 @@ export type ServiceOrder = {
     notes?: string;
     finalValue?: number;
     clientCpf?: string; // Adicionado para impressão
+    items?: ServiceOrderItem[];
 };

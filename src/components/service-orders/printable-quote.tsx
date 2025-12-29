@@ -10,23 +10,21 @@ interface PrintableQuoteProps {
 
 export const PrintableQuote = forwardRef<HTMLDivElement, PrintableQuoteProps>(
   ({ data = {} as ServiceOrder }, ref) => {
-    // Dados padrão para não quebrar
     const id = data.id || "0000";
     const clientName = data.clientName || "Consumidor Final";
     const date = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
     
-    // Se não tiver itens detalhados, simula um item com a descrição geral
-    const mainItem = {
-        qtd: "01",
-        desc: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
-        unitPrice: data.finalValue || 0,
-        total: data.finalValue || 0
-    };
+    const items = data.items || [{
+        id: 'default',
+        description: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
+        quantity: 1,
+        unitPrice: data.finalValue || 0
+    }];
 
-    // Preenche linhas vazias para ficar igual ao papel da foto (Total de 12 linhas na tabela)
-    const emptyRows = Array(10).fill(null);
+    const totalValue = items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
 
-    const total = mainItem.total;
+    const emptyRowsCount = Math.max(0, 10 - items.length);
+    const emptyRows = Array(emptyRowsCount).fill(null);
 
     return (
       <div ref={ref} className="bg-white text-black font-sans w-[210mm] min-h-[297mm] p-10 relative text-sm">
@@ -62,14 +60,16 @@ export const PrintableQuote = forwardRef<HTMLDivElement, PrintableQuoteProps>(
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td className="border border-black p-1 text-center">{mainItem.qtd}</td>
-                    <td className="border border-black p-1">{mainItem.desc}</td>
-                    <td className="border border-black p-1 text-right">R$ {Number(mainItem.unitPrice).toFixed(2)}</td>
-                    <td className="border border-black p-1 text-right">R$ {Number(mainItem.total).toFixed(2)}</td>
-                </tr>
+                {items.map(item => (
+                  <tr key={item.id}>
+                      <td className="border border-black p-1 text-center">{item.quantity}</td>
+                      <td className="border border-black p-1">{item.description}</td>
+                      <td className="border border-black p-1 text-right">R$ {Number(item.unitPrice).toFixed(2)}</td>
+                      <td className="border border-black p-1 text-right">R$ {Number(item.quantity * item.unitPrice).toFixed(2)}</td>
+                  </tr>
+                ))}
                 {/* Linhas Vazias para preencher o papel */}
-                {[...Array(emptyRows)].map((_, i) => (
+                {emptyRows.map((_, i) => (
                     <tr key={`empty-${i}`} className="h-6">
                         <td className="border border-black"></td>
                         <td className="border border-black"></td>
@@ -91,11 +91,11 @@ export const PrintableQuote = forwardRef<HTMLDivElement, PrintableQuoteProps>(
                 </tr>
                 <tr>
                     <td className="border border-black p-1 font-bold text-right">MÃO DE OBRA</td>
-                    <td className="border border-black p-1 text-right">R$ {total.toFixed(2)}</td>
+                    <td className="border border-black p-1 text-right">R$ {totalValue.toFixed(2)}</td>
                 </tr>
                 <tr>
                     <td className="border border-black p-1 font-bold text-right bg-gray-200">TOTAL R$</td>
-                    <td className="border border-black p-1 font-bold text-right bg-gray-200">R$ {total.toFixed(2)}</td>
+                    <td className="border border-black p-1 font-bold text-right bg-gray-200">R$ {totalValue.toFixed(2)}</td>
                 </tr>
             </tfoot>
         </table>

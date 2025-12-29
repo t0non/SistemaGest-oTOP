@@ -10,21 +10,21 @@ interface PrintableOrderProps {
 
 export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderProps>(
   ({ data = {} as ServiceOrder }, ref) => {
-    // Tratamento de dados para não quebrar se vier vazio
     const id = data.id || "0000";
     const clientName = data.clientName || "Consumidor Final";
     const date = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
     
-    // Simula o item da tabela baseado nos dados da OS
-    const mainItem = {
-        qtd: "01",
-        desc: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
-        unitPrice: data.finalValue || 0,
-        total: data.finalValue || 0
-    };
+    const items = data.items || [{
+        id: 'default',
+        description: `${data.equipment || 'Equipamento'} - ${data.problemDescription || 'Serviço de Manutenção'}`,
+        quantity: 1,
+        unitPrice: data.finalValue || 0
+    }];
 
-    // Gera linhas vazias para ficar igual ao papel da foto (Total de 12 linhas na tabela)
-    const emptyRows = Array(10).fill(null);
+    const totalValue = items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+
+    const emptyRowsCount = Math.max(0, 10 - items.length);
+    const emptyRows = Array(emptyRowsCount).fill(null);
 
     return (
       <div ref={ref} className="bg-white text-black font-sans w-[210mm] min-h-[297mm] p-12 relative">
@@ -63,13 +63,14 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
                 </tr>
             </thead>
             <tbody>
-                {/* Linha do Produto Real */}
-                <tr className="h-8">
-                    <td className="border border-black p-1 px-2 align-top">{mainItem.qtd}</td>
-                    <td className="border border-black p-1 px-2 align-top uppercase">{mainItem.desc}</td>
-                    <td className="border border-black p-1 px-2 align-top">R$ {Number(mainItem.unitPrice).toFixed(2)}</td>
-                    <td className="border border-black p-1 px-2 align-top">R$ {Number(mainItem.total).toFixed(2)}</td>
-                </tr>
+                {items.map((item) => (
+                    <tr key={item.id} className="h-8">
+                        <td className="border border-black p-1 px-2 align-top text-center">{item.quantity}</td>
+                        <td className="border border-black p-1 px-2 align-top uppercase">{item.description}</td>
+                        <td className="border border-black p-1 px-2 align-top">R$ {Number(item.unitPrice).toFixed(2)}</td>
+                        <td className="border border-black p-1 px-2 align-top">R$ {Number(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    </tr>
+                ))}
 
                 {/* Linhas Vazias */}
                 {emptyRows.map((_, index) => (
@@ -88,7 +89,7 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
             <div className="flex items-center">
                 <span className="font-bold mr-2 text-sm">TOTAL R$</span>
                 <div className="border border-black w-32 h-10 flex items-center justify-end px-2 font-bold text-lg">
-                    {Number(mainItem.total).toFixed(2)}
+                    {Number(totalValue).toFixed(2)}
                 </div>
             </div>
         </div>
