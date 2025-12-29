@@ -22,12 +22,9 @@ import { formatCPF, formatPhone } from '@/lib/formatters';
 
 const clientFormSchema = z.object({
   name: z.string().min(3, {message: 'O nome deve ter pelo menos 3 caracteres.'}),
-  cpf: z
-    .string()
-    .min(14, {message: 'O CPF deve ter 11 caracteres.'})
-    .max(14, {message: 'O CPF deve ter no máximo 14 caracteres.'}),
+  cpf: z.string().optional(),
   phone: z.string().min(14, {message: 'O telefone deve ter pelo menos 10 caracteres.'}),
-  address: z.string().min(5, {message: 'O endereço deve ter pelo menos 5 caracteres.'}),
+  address: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -66,7 +63,7 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
 
     const dataToSave = {
       ...values,
-      cpf: values.cpf.replace(/\D/g, ''),
+      cpf: values.cpf?.replace(/\D/g, '') || '',
       phone: values.phone.replace(/\D/g, ''),
     };
 
@@ -114,7 +111,7 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
             name="cpf"
             render={({field}) => (
               <FormItem>
-                <FormLabel>CPF</FormLabel>
+                <FormLabel>CPF (Opcional)</FormLabel>
                 <FormControl>
                   <Input placeholder="000.000.000-00" {...field} onChange={handleCpfChange} />
                 </FormControl>
@@ -141,7 +138,7 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
           name="address"
           render={({field}) => (
             <FormItem>
-              <FormLabel>Endereço Completo</FormLabel>
+              <FormLabel>Endereço Completo (Opcional)</FormLabel>
               <FormControl>
                 <Input placeholder="Rua, Número, Bairro, Cidade - UF" {...field} />
               </FormControl>
