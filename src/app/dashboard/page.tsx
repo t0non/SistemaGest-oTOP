@@ -75,11 +75,21 @@ export default function DashboardPage() {
       if (t.type === 'expense') grouped[dayKey].expense += Number(t.amount);
     });
 
-    return Object.keys(grouped).map(key => ({
-      name: key,
-      income: grouped[key].income,
-      expense: grouped[key].expense
-    })).sort((a,b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+    return Object.keys(grouped).map(key => {
+        const inc = grouped[key].income;
+        const exp = grouped[key].expense;
+        return {
+            name: format(parseISO(key), "dd/MM"),
+            income: inc,
+            expense: exp,
+            saldo: inc - exp,
+        }
+    }).sort((a,b) => {
+        const [dayA, monthA] = a.name.split('/');
+        const [dayB, monthB] = b.name.split('/');
+        if (monthA !== monthB) return parseInt(monthA) - parseInt(monthB);
+        return parseInt(dayA) - parseInt(dayB);
+    });
   }, [transactions]);
 
   const formatCurrency = (value: number) =>
@@ -184,14 +194,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Visão Geral Financeira</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <OverviewChart data={chartData} />
-        </CardContent>
-      </Card>
+      <OverviewChart data={chartData} />
+
     </div>
   );
 }

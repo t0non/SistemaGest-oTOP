@@ -1,98 +1,135 @@
-
 'use client';
 
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+  ComposedChart,
+  Line,
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend,
+  ReferenceLine
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface OverviewChartProps {
-  data: { name: string, income: number, expense: number }[];
+  data: any[];
 }
 
+// Tooltip personalizado e CLEAN
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const formattedLabel = format(parseISO(label), "eeee, dd 'de' MMMM", { locale: ptBR });
     return (
-      <div className="rounded-lg border bg-background p-2 shadow-sm">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col space-y-1">
-            <span className="text-[0.70rem] uppercase text-muted-foreground">
-              Entradas
-            </span>
-            <span className="font-bold text-green-600">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payload[0].value)}
-            </span>
-          </div>
-          <div className="flex flex-col space-y-1">
-            <span className="text-[0.70rem] uppercase text-muted-foreground">
-              Saídas
-            </span>
-            <span className="font-bold text-red-600">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payload[1].value)}
-            </span>
-          </div>
+      <div className="bg-white p-4 border rounded-xl shadow-lg outline-none">
+        <p className="text-sm font-bold text-gray-700 mb-2">{label}</p>
+        <div className="space-y-1 text-sm">
+            {payload.map((entry: any, index: number) => (
+                <div key={index} style={{ color: entry.color }} className="flex justify-between gap-4 font-medium">
+                    <span>{entry.name}:</span>
+                    <span>
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entry.value)}
+                    </span>
+                </div>
+            ))}
         </div>
-         <p className="text-sm font-medium mt-2 pt-2 border-t text-center text-muted-foreground capitalize">{formattedLabel}</p>
       </div>
     );
   }
   return null;
 };
 
+
 export function OverviewChart({ data }: OverviewChartProps) {
   
   if (!data || data.length === 0) {
     return (
-      <div className="w-full h-[410px] bg-card rounded-xl border flex items-center justify-center">
-        <p className="text-muted-foreground">Sem movimentações no período selecionado.</p>
+      <div className="w-full h-[400px] bg-card rounded-xl border p-6 flex items-center justify-center text-muted-foreground flex-col gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        Sem dados financeiros neste período.
       </div>
     );
   }
 
   return (
     <div className="w-full bg-card rounded-xl border p-6">
-       <div className="mb-4 flex justify-between items-end">
+      <div className="mb-8 flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold font-headline text-card-foreground">Fluxo de Caixa</h3>
-          <p className="text-sm text-muted-foreground">Acompanhamento de entradas e saídas no período.</p>
+            <h3 className="text-xl font-bold font-headline text-card-foreground">Fluxo & Saldo Líquido</h3>
+            <p className="text-sm text-muted-foreground">Barras = Movimentação | Linha = O que sobrou no dia.</p>
         </div>
       </div>
-      <div className="h-[350px] w-full">
+
+      <div className="h-[400px] w-full font-sans">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+          <ComposedChart
+            data={data}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+          >
             <defs>
-              <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#16a34a" stopOpacity={0}/>
+              <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#16a34a" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#16a34a" stopOpacity={0.3}/>
               </linearGradient>
-              <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#dc2626" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+              <linearGradient id="colorExpenseBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#dc2626" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#dc2626" stopOpacity={0.3}/>
               </linearGradient>
             </defs>
+
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
+            
             <XAxis 
               dataKey="name" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }} 
               dy={10}
-              minTickGap={30}
-              tickFormatter={(str) => format(parseISO(str), "dd/MM")}
             />
             <YAxis 
               axisLine={false} 
-              tickLine={false} 
-              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-              tickFormatter={(value) => `R$${value/1000}k`}
-              domain={[0, 'dataMax + 100']}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
+              tickFormatter={(value) => `R$${value / 1000}k`}
             />
-            <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="income" name="Entradas" stroke="#16a34a" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
-            <Area type="monotone" dataKey="expense" name="Saídas" stroke="#dc2626" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
-          </AreaChart>
+            
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+            
+            <Legend 
+                verticalAlign="top" 
+                height={36}
+                iconType="circle"
+                wrapperStyle={{ fontSize: '13px', fontWeight: 500, color: 'hsl(var(--foreground))' }}
+            />
+
+            <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={2} />
+
+            <Bar 
+              dataKey="income" 
+              name="Entradas" 
+              fill="url(#colorIncomeBar)"
+              radius={[8, 8, 0, 0]} 
+              barSize={12}
+            />
+            <Bar 
+              dataKey="expense" 
+              name="Saídas" 
+              fill="url(#colorExpenseBar)"
+              radius={[8, 8, 0, 0]}
+              barSize={12}
+            />
+
+            <Line 
+                type="monotone"
+                dataKey="saldo" 
+                name="Saldo Líquido" 
+                stroke="#2563eb"
+                strokeWidth={4}
+                dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
+                activeDot={{ r: 8, strokeWidth: 0 }}
+            />
+
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
