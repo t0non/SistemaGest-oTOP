@@ -66,8 +66,8 @@ export function ServiceOrderList({
 }) {
   const [editingOS, setEditingOS] = React.useState<ServiceOrder | null>(null);
   const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
+  
   const [osToPrint, setOsToPrint] = React.useState<ServiceOrder | null>(null);
-
   const printRef = React.useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
@@ -88,6 +88,13 @@ export function ServiceOrderList({
     }
     setOsToPrint(order);
   }
+
+  React.useEffect(() => {
+    if (osToPrint) {
+      handlePrint();
+    }
+  }, [osToPrint, handlePrint]);
+
 
   React.useEffect(() => {
     setEditingOS(null);
@@ -151,8 +158,7 @@ export function ServiceOrderList({
 
   return (
     <>
-       {/* Componente de impressão oculto */}
-       <div className="hidden">
+      <div style={{ display: "none" }}>
         {osToPrint && clientForPrint && (
             <PrintableOrder ref={printRef} order={osToPrint} client={clientForPrint} />
         )}
@@ -211,18 +217,7 @@ export function ServiceOrderList({
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => { 
-                            e.preventDefault(); 
-                            const client = clients.find(c => c.id === os.clientId);
-                            if (!client) {
-                                toast({ variant: 'destructive', title: 'Erro', description: 'Cliente não encontrado para esta OS.' });
-                                return;
-                            }
-                            setOsToPrint(os);
-                            setTimeout(() => {
-                                handlePrint();
-                            }, 100);
-                        }}>
+                        <DropdownMenuItem onSelect={() => onPrint(os)}>
                           <Printer className="mr-2 h-4 w-4" />
                           Imprimir Recibo
                         </DropdownMenuItem>
