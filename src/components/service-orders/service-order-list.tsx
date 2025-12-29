@@ -63,9 +63,10 @@ export function ServiceOrderList({
   initialServiceOrders: ServiceOrder[];
   clients: Client[];
 }) {
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isFinalizeAlertOpen, setIsFinalizeAlertOpen] = React.useState(false);
-  const [selectedOS, setSelectedOS] = React.useState<ServiceOrder | null>(null);
+  const [osToFinalize, setOsToFinalize] = React.useState<ServiceOrder | null>(null);
+  const [editingOS, setEditingOS] = React.useState<ServiceOrder | null | 'new'>(null);
+  
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -81,37 +82,20 @@ export function ServiceOrderList({
     replace(`${pathname}?${params.toString()}`);
   }, 300);
 
-  const handleFormOpenChange = (open: boolean) => {
-    setIsFormOpen(open);
-    if (!open) {
-      setSelectedOS(null);
-    }
-  }
-
-  const openFormForNew = () => {
-    setSelectedOS(null);
-    setIsFormOpen(true);
-  };
-
-  const openFormForEdit = (os: ServiceOrder) => {
-    setSelectedOS(os);
-    setIsFormOpen(true);
-  };
-  
   const handleFinalize = (os: ServiceOrder) => {
-      setSelectedOS(os);
+      setOsToFinalize(os);
       setIsFinalizeAlertOpen(true);
   }
 
   const onFinalizeConfirm = async () => {
-    if (!selectedOS || !selectedOS.finalValue) return;
+    if (!osToFinalize || !osToFinalize.finalValue) return;
 
     const transactionData = {
         type: 'income' as const,
-        description: `Recebimento OS ${selectedOS.id} - ${selectedOS.equipment}`,
-        amount: selectedOS.finalValue,
-        clientId: selectedOS.clientId,
-        clientName: selectedOS.clientName
+        description: `Recebimento OS ${osToFinalize.id} - ${osToFinalize.equipment}`,
+        amount: osToFinalize.finalValue,
+        clientId: osToFinalize.clientId,
+        clientName: osToFinalize.clientName
     };
 
     const result = await addTransaction(transactionData);
@@ -119,7 +103,7 @@ export function ServiceOrderList({
     if (result.success) {
         toast({
             title: "Sucesso!",
-            description: `Lançamento de R$ ${selectedOS.finalValue.toFixed(2)} para a OS ${selectedOS.id} criado.`,
+            description: `Lançamento de R$ ${osToFinalize.finalValue.toFixed(2)} para a OS ${osToFinalize.id} criado.`,
         });
     } else {
         toast({
@@ -128,13 +112,20 @@ export function ServiceOrderList({
             description: result.message || "Não foi possível criar o lançamento financeiro.",
         });
     }
-
     setIsFinalizeAlertOpen(false);
+    setOsToFinalize(null);
   }
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   };
+  
+  const isFormOpen = !!editingOS;
+  const handleFormOpenChange = (open: boolean) => {
+    if (!open) {
+      setEditingOS(null);
+    }
+  }
 
   return (
     <>
@@ -145,7 +136,7 @@ export function ServiceOrderList({
           onChange={(e) => handleSearch(e.target.value)}
           defaultValue={searchParams.get('query')?.toString()}
         />
-        <Button onClick={openFormForNew}>
+        <Button onClick={() => setEditingOS('new')}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova OS
         </Button>
@@ -186,7 +177,7 @@ export function ServiceOrderList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openFormForEdit(os)}>
+                        <DropdownMenuItem onClick={() => setEditingOS(os)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
@@ -216,29 +207,31 @@ export function ServiceOrderList({
         </Table>
       </div>
 
-      {/* Form Dialog */}
+      {/* Form Dialog - Single instance */}
       <Dialog open={isFormOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-headline">
-              {selectedOS ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço'}
+              {editingOS === 'new' ? 'Nova Ordem de Serviço' : 'Editar Ordem de Serviço'}
             </DialogTitle>
             <DialogDescription>
-              {selectedOS
-                ? 'Atualize os dados da OS.'
-                : 'Preencha os dados da nova OS.'}
+              {editingOS === 'new'
+                ? 'Preencha os dados da nova OS.'
+                : 'Atualize os dados da OS.'}
             </DialogDescription>
           </DialogHeader>
-          <ServiceOrderForm
-            key={selectedOS?.id || 'new'}
-            serviceOrder={selectedOS}
-            clients={clients}
-            onSuccess={() => handleFormOpenChange(false)}
-          />
+          {editingOS && (
+            <ServiceOrderForm
+                key={editingOS === 'new' ? 'new' : editingOS.id}
+                serviceOrder={editingOS === 'new' ? null : editingOS}
+                clients={clients}
+                onSuccess={() => handleFormOpenChange(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
       
-      {/* Finalize Confirmation Alert */}
+      {/* Finalize Confirmation Alert - Single instance */}
       <AlertDialog open={isFinalizeAlertOpen} onOpenChange={setIsFinalizeAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -246,13 +239,13 @@ export function ServiceOrderList({
             <AlertDialogDescription>
               Deseja criar um registro de entrada no valor de{' '}
               <span className="font-bold">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOS?.finalValue || 0)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(osToFinalize?.finalValue || 0)}
               </span>{' '}
-              para a OS <span className="font-bold">{selectedOS?.id}</span>?
+              para a OS <span className="font-bold">{osToFinalize?.id}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setOsToFinalize(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onFinalizeConfirm}>
               Confirmar
             </AlertDialogAction>
