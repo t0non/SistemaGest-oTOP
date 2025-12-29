@@ -4,17 +4,16 @@ import React from 'react';
 import type { ServiceOrder } from '@/lib/definitions';
 import { formatCPF } from '@/lib/formatters';
 
-// Estendendo o tipo para incluir o CPF opcional
-interface PrintableServiceOrder extends ServiceOrder {
-  clientCpf?: string;
-}
-
 interface PrintableOrderProps {
-  data: PrintableServiceOrder;
+  data: ServiceOrder;
 }
 
 export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderProps>(
-  ({ data }, ref) => {
+  ({ data = {} as ServiceOrder }, ref) => {
+    const id = data.id || "0000";
+    const clientName = data.clientName || "Consumidor";
+    const entryDate = data.entryDate ? new Date(data.entryDate).toLocaleDateString() : new Date().toLocaleDateString();
+
     return (
       <div ref={ref} className="p-8 bg-white text-black font-sans hidden print:block">
         {/* Cabeçalho */}
@@ -30,10 +29,10 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
           <h2 className="text-lg font-bold border-b border-gray-200 mb-2">Detalhes do Pedido</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-semibold">Nº da OS:</span> {data.id}
+              <span className="font-semibold">Nº da OS:</span> {id}
             </div>
             <div>
-              <span className="font-semibold">Data:</span> {new Date(data.entryDate).toLocaleDateString()}
+              <span className="font-semibold">Data:</span> {entryDate}
             </div>
           </div>
         </div>
@@ -41,7 +40,7 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
         {/* Dados do Cliente */}
         <div className="mb-6 bg-gray-50 p-4 rounded border border-gray-100">
           <h2 className="text-lg font-bold mb-2">Cliente</h2>
-          <p><span className="font-semibold">Nome:</span> {data.clientName}</p>
+          <p><span className="font-semibold">Nome:</span> {clientName}</p>
           {data.clientCpf && <p><span className="font-semibold">CPF:</span> {formatCPF(data.clientCpf)}</p>}
         </div>
 
@@ -57,7 +56,7 @@ export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderPro
             <tbody>
               <tr className="border-b border-gray-200">
                 <td className="py-3">
-                  <p className="font-bold">{data.equipment}</p>
+                  <p className="font-bold">{data.equipment || 'N/A'}</p>
                   <p className="text-gray-500">{data.problemDescription || 'Manutenção e reparos diversos.'}</p>
                 </td>
                 <td className="py-3 text-right font-bold">
