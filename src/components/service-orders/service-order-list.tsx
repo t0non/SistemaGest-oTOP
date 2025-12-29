@@ -41,7 +41,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useReactToPrint } from 'react-to-print';
 
-import type { ServiceOrder, ServiceOrderStatus as ServiceOrderStatusType, Client } from '@/lib/definitions';
+import type { ServiceOrder, ServiceOrderStatus as ServiceOrderStatusType, Client, TransactionOwner } from '@/lib/definitions';
 import { ServiceOrderForm } from './service-order-form';
 import { MoreHorizontal, PlusCircle, Edit, Printer, CheckCircle, FileText } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -133,7 +133,9 @@ export function ServiceOrderList({
         description: `Recebimento OS ${osToFinalize.id} - ${osToFinalize.equipment}`,
         amount: osToFinalize.finalValue,
         clientId: osToFinalize.clientId,
-        clientName: osToFinalize.clientName
+        clientName: osToFinalize.clientName,
+        date: osToFinalize.entryDate, // Utiliza a data da OS
+        owner: 'split' as TransactionOwner, // Default para dividido
     };
 
     const result = addTransaction(transactionData);

@@ -29,6 +29,7 @@ const transactionSchema = z.object({
   owner: z.enum(['admin', 'pedro', 'split']),
   clientId: z.string().optional(),
   clientName: z.string().optional(),
+  date: z.string().optional(), // Tornar a data opcional na validação
 });
 
 
@@ -88,7 +89,7 @@ export function getMonthlyFinancialSummary(): {
   return {revenue, expenses, profit, productsSold, adminProfit, pedroProfit};
 }
 
-export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {
+export function addTransaction(data: Partial<Omit<Transaction, 'id'>>): {success: boolean; message?: string;} {
     try {
         const validation = transactionSchema.safeParse(data);
         if (!validation.success) {
@@ -99,8 +100,13 @@ export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success
         let transactions = getTransactionsFromStorage();
         const newTransaction: Transaction = {
             id: `t-${Date.now()}`,
-            date: new Date().toISOString(),
-            ...validation.data
+            date: data.date || new Date().toISOString(),
+            ...validation.data,
+            // Certifique-se de que os campos obrigatórios tenham um valor padrão se não forem passados
+            type: validation.data.type!,
+            description: validation.data.description!,
+            amount: validation.data.amount!,
+            owner: validation.data.owner!,
         };
         transactions.unshift(newTransaction);
         saveTransactionsToStorage(transactions);
