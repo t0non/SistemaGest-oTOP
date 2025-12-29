@@ -29,6 +29,7 @@ export function getMonthlyFinancialSummary(): {
   revenue: number;
   expenses: number;
   profit: number;
+  productsSold: number;
 } {
   const transactions = getTransactionsFromStorage();
   const today = new Date();
@@ -47,7 +48,9 @@ export function getMonthlyFinancialSummary(): {
 
   const profit = revenue - expenses;
 
-  return {revenue, expenses, profit};
+  const productsSold = monthlyTransactions.filter((t) => t.type === 'income').length;
+
+  return {revenue, expenses, profit, productsSold};
 }
 
 export function addTransaction(data: Omit<Transaction, 'id' | 'date'>): {success: boolean; message?: string;} {

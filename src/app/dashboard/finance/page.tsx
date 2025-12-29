@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getMonthlyFinancialSummary, getTransactions } from './actions';
 import StatCard from '@/components/dashboard/stat-card';
-import { ArrowDown, ArrowUp, DollarSign, PlusCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,10 +35,11 @@ interface FinancialSummary {
   revenue: number;
   expenses: number;
   profit: number;
+  productsSold: number;
 }
 
 export default function FinancePage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0 });
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0 });
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -115,13 +116,14 @@ export default function FinancePage() {
 
         {/* Resumo Cards */}
         {loading ? (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
                 <Skeleton className="h-28" />
             </div>
         ) : (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
                 title="Entradas no Mês"
                 value={formatCurrency(summary.revenue)}
@@ -133,6 +135,11 @@ export default function FinancePage() {
                 value={formatCurrency(summary.expenses)}
                 icon={ArrowDown}
                 positive={false}
+            />
+             <StatCard
+                title="Serviços/Vendas no Mês"
+                value={String(summary.productsSold)}
+                icon={Package}
             />
             <StatCard
                 title="Saldo Líquido"
