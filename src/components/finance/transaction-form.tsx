@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addTransaction, updateTransaction } from '@/app/dashboard/finance/actions';
-import { unformatCurrency, formatCurrency as formatCurrencyString } from '@/lib/formatters';
+import { unformatCurrency, formatCurrency } from '@/lib/formatters';
 import type { Client, Transaction, TransactionOwner } from '@/lib/definitions';
 import { Textarea } from '../ui/textarea';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
@@ -58,14 +58,14 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
     defaultValues: {
       type: transaction?.type || 'expense',
       description: transaction?.description || '',
-      amount: transaction?.amount ? formatCurrencyString(transaction.amount) : '',
+      amount: transaction?.amount ? formatCurrency(transaction.amount) : '',
       owner: transaction?.owner || 'admin',
       clientId: transaction?.clientId || undefined,
     },
   });
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    form.setValue('amount', formatCurrencyString(e.target.value));
+    form.setValue('amount', formatCurrency(e.target.value));
   };
   
   async function onSubmit(values: TransactionFormValues) {

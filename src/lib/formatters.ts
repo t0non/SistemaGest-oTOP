@@ -29,43 +29,37 @@ export const formatPhone = (phone: string): string => {
 };
 
 export const formatCurrency = (value: string | number): string => {
-    let stringValue = String(value);
-    
-    // Remove tudo que não for dígito ou vírgula
-    stringValue = stringValue.replace(/[^\d,]/g, '');
+  let stringValue = String(value);
 
-    // Substitui vírgula por ponto para o parse
-    stringValue = stringValue.replace(',', '.');
-    
-    // Remove múltiplos pontos
-    const parts = stringValue.split('.');
-    if (parts.length > 2) {
-        stringValue = parts[0] + '.' + parts.slice(1).join('');
-    }
+  if (typeof value === 'number') {
+      return value.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+      });
+  }
+  
+  // Remove tudo que não for dígito
+  stringValue = stringValue.replace(/\D/g, '');
+  if (stringValue === '') return '';
 
-    // Se o valor for vazio ou inválido, retorna uma string vazia
-    if (isNaN(parseFloat(stringValue))) {
-      return '';
-    }
-
-    return parseFloat(stringValue).toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        minimumFractionDigits: 2,
-    });
+  const numberValue = parseInt(stringValue, 10) / 100;
+  
+  return numberValue.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+  });
 };
 
 
 export const unformatCurrency = (value: string): number => {
     if (!value) return 0;
     
-    // Remove o símbolo da moeda e os pontos de milhar
-    const numericString = value.replace('R$', '').replace(/\./g, '').trim();
+    // Remove tudo que não for dígito
+    const numericString = value.replace(/\D/g, '');
+    if (numericString === '') return 0;
     
-    // Troca a vírgula do decimal por um ponto
-    const finalString = numericString.replace(',', '.');
-
-    const numberValue = parseFloat(finalString);
+    const numberValue = parseFloat(numericString) / 100;
     
     return isNaN(numberValue) ? 0 : numberValue;
 };
