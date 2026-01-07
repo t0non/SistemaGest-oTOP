@@ -75,38 +75,43 @@ export function ServiceOrderList({
   const pathname = usePathname();
   const { replace } = useRouter();
   
-  // === LÓGICA DO RECIBO ===
-  const [reciboData, setReciboData] = React.useState<any>(initialServiceOrders[0] || {});
+  const [reciboData, setReciboData] = React.useState<ServiceOrder | null>(null);
   const reciboRef = React.useRef<HTMLDivElement>(null);
-  
   const printRecibo = useReactToPrint({
-    contentRef: reciboRef,
+    content: () => reciboRef.current,
     documentTitle: `Recibo-${reciboData?.id}`,
     onPrintError: (error) => console.error("Erro impressão recibo:", error),
   });
 
-  const gerarRecibo = (order: any, e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
+  const gerarRecibo = (order: ServiceOrder) => {
     setReciboData(order);
-    setTimeout(() => { if (reciboRef.current) printRecibo(); }, 100);
+    setTimeout(() => { 
+        if (reciboRef.current) {
+             printRecibo();
+        } else {
+            console.error("A referência para o recibo é nula.");
+            toast({ variant: 'destructive', title: 'Erro de Impressão', description: 'Não foi possível encontrar o conteúdo para imprimir.'});
+        }
+    }, 100);
   };
 
-  // === LÓGICA DO ORÇAMENTO ===
-  const [orcamentoData, setOrcamentoData] = React.useState<any>(initialServiceOrders[0] || {});
-  const orcamentoRef = React.useRef<HTMLDivElement>(null);
 
+  const [orcamentoData, setOrcamentoData] = React.useState<ServiceOrder | null>(null);
+  const orcamentoRef = React.useRef<HTMLDivElement>(null);
   const printOrcamento = useReactToPrint({
-    contentRef: orcamentoRef,
+    content: () => orcamentoRef.current,
     documentTitle: `Orcamento-${orcamentoData?.id}`,
     onPrintError: (error) => console.error("Erro impressão orçamento:", error),
   });
 
-  const gerarOrcamento = (order: any, e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
+  const gerarOrcamento = (order: ServiceOrder) => {
     setOrcamentoData(order);
     setTimeout(() => {
       if (orcamentoRef.current) {
         printOrcamento();
+      } else {
+         console.error("A referência para o orçamento é nula.");
+         toast({ variant: 'destructive', title: 'Erro de Impressão', description: 'Não foi possível encontrar o conteúdo para imprimir.'});
       }
     }, 100);
   };
@@ -134,8 +139,8 @@ export function ServiceOrderList({
         amount: osToFinalize.finalValue,
         clientId: osToFinalize.clientId,
         clientName: osToFinalize.clientName,
-        date: osToFinalize.entryDate, // Utiliza a data da OS
-        owner: 'split' as TransactionOwner, // Default para dividido
+        date: new Date().toISOString(),
+        owner: 'split' as TransactionOwner,
     };
 
     const result = addTransaction(transactionData);
@@ -157,7 +162,11 @@ export function ServiceOrderList({
   }
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+      return "Data inválida";
+    }
   };
   
   const handleOpenForm = (os: ServiceOrder | 'new') => {
@@ -226,7 +235,7 @@ export function ServiceOrderList({
 
                            <DropdownMenuItem
                             onSelect={(e) => e.preventDefault()}
-                            onClick={(e) => gerarRecibo(orderWithCpf, e)}
+                            onClick={() => gerarRecibo(orderWithCpf)}
                             className="cursor-pointer"
                            >
                               <Printer className="mr-2 h-4 w-4" />
@@ -235,7 +244,7 @@ export function ServiceOrderList({
 
                           <DropdownMenuItem
                             onSelect={(e) => e.preventDefault()}
-                            onClick={(e) => gerarOrcamento(orderWithCpf, e)}
+                            onClick={() => gerarOrcamento(orderWithCpf)}
                             className="cursor-pointer"
                            >
                               <FileText className="mr-2 h-4 w-4" />
@@ -316,13 +325,9 @@ export function ServiceOrderList({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- ÁREA DOS COMPONENTES OFF-SCREEN (INVISÍVEIS) --- */}
-      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px' }}>
-         {/* 1. O Recibo Antigo */}
-         <PrintableOrder ref={reciboRef} data={reciboData} />
-
-         {/* 2. O Novo Orçamento (Separado) */}
-         <PrintableQuote ref={orcamentoRef} data={orcamentoData} />
+      <div style={{ display: 'none' }}>
+        {reciboData && <PrintableOrder ref={reciboRef} data={reciboData} />}
+        {orcamentoData && <PrintableQuote ref={orcamentoRef} data={orcamentoData} />}
       </div>
     </>
   );
