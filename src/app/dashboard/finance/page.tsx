@@ -14,8 +14,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getMonthlyFinancialSummary, getTransactions, deleteTransaction } from './actions';
-import StatCard from '@/components/dashboard/stat-card';
-import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2, User, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -53,17 +52,22 @@ import { getClients } from '../clients/actions';
 import type { Client } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
+import { useReactToPrint } from 'react-to-print';
+import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
+
 
 interface FinancialSummary {
   revenue: number;
   expenses: number;
   profit: number;
   productsSold: number;
+  adminProfit: number;
+  pedroProfit: number;
 }
 
 export default function FinancePage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0 });
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
+  const [allTransactions, setAllTransactions] = React.useState<Transaction[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -82,7 +86,7 @@ export default function FinancePage() {
       const clientsData = getClients('');
       
       setSummary(summaryData);
-      setTransactions(transactionsData);
+      setAllTransactions(transactionsData);
       setClients(clientsData);
     } catch (error) {
       console.error(error);
@@ -110,18 +114,29 @@ export default function FinancePage() {
 
   }, [fetchData]);
   
-  const chartData = React.useMemo(() => {
+  const filteredTransactions = React.useMemo(() => {
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T23:59:59');
-
-    const filtered = transactions.filter(t => {
+    return allTransactions.filter(t => {
       const transactionDate = parseISO(t.date);
       return transactionDate >= start && transactionDate <= end;
     });
+  }, [allTransactions, startDate, endDate]);
 
+  const periodSummary = React.useMemo(() => {
+    let revenue = 0;
+    let expenses = 0;
+    filteredTransactions.forEach(t => {
+      if (t.type === 'income') revenue += t.amount;
+      else expenses += t.amount;
+    });
+    return { revenue, expenses, profit: revenue - expenses };
+  }, [filteredTransactions]);
+
+  const chartData = React.useMemo(() => {
     const grouped: Record<string, { income: number, expense: number }> = {};
 
-    filtered.forEach(t => {
+    filteredTransactions.forEach(t => {
       const dayKey = format(parseISO(t.date), 'yyyy-MM-dd');
 
       if (!grouped[dayKey]) grouped[dayKey] = { income: 0, expense: 0 };
@@ -130,13 +145,31 @@ export default function FinancePage() {
       if (t.type === 'expense') grouped[dayKey].expense += Number(t.amount);
     });
 
-    return Object.keys(grouped).map(key => ({
-      name: key,
-      income: grouped[key].income,
-      expense: grouped[key].expense
-    })).sort((a,b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+    return Object.keys(grouped).map(key => {
+      const inc = grouped[key].income;
+      const exp = grouped[key].expense;
+      return {
+          name: format(parseISO(key), "dd/MM"),
+          income: inc,
+          expense: exp,
+          saldo: inc - exp,
+      }
+    }).sort((a,b) => {
+        const [dayA, monthA] = a.name.split('/');
+        const [dayB, monthB] = b.name.split('/');
+        if (monthA !== monthB) return parseInt(monthA) - parseInt(monthB);
+        return parseInt(dayA) - parseInt(dayB);
+    });
+  }, [filteredTransactions]);
 
-  }, [transactions, startDate, endDate]);
+  const reportRef = React.useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+      content: () => reportRef.current,
+      documentTitle: `Relatorio-Financeiro-${startDate}-ate-${endDate}`,
+      onAfterPrint: () => toast({ title: 'Relatório gerado.' }),
+      onPrintError: () => toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' }),
+  });
+
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
@@ -188,7 +221,11 @@ export default function FinancePage() {
     }).format(value);
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+    try {
+        return format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+        return "Data inválida"
+    }
   };
   
   const ownerMap = {
@@ -207,26 +244,39 @@ export default function FinancePage() {
               Acompanhe as entradas e saídas da sua loja.
             </p>
           </div>
-           <div className="flex items-center gap-2 bg-card p-2 rounded-lg border shadow-sm w-full sm:w-auto">
-            <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground font-bold px-1">DE</span>
-              <input 
-                type="date" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
-              />
+          <div className="flex w-full sm:w-auto items-center gap-2">
+            <div className="flex items-center gap-2 bg-card p-2 rounded-lg border shadow-sm w-full sm:w-auto">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground font-bold px-1">DE</span>
+                <input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
+                />
+              </div>
+              <span className="text-border">|</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground font-bold px-1">ATÉ</span>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
+                />
+              </div>
             </div>
-            <span className="text-border">|</span>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground font-bold px-1">ATÉ</span>
-              <input 
-                type="date" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="text-sm bg-transparent outline-none font-medium text-foreground cursor-pointer"
-              />
-            </div>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button onClick={handlePrint} variant="outline" size="icon">
+                        <Printer className="h-4 w-4" />
+                        <span className="sr-only">Imprimir Relatório</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Imprimir Relatório</p>
+                </TooltipContent>
+            </Tooltip>
           </div>
           <Button onClick={openFormForNew} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -259,8 +309,8 @@ export default function FinancePage() {
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
-              ) : transactions.length > 0 ? (
-                transactions.map((transaction) => {
+              ) : filteredTransactions.length > 0 ? (
+                filteredTransactions.map((transaction) => {
                   const ownerInfo = ownerMap[transaction.owner] || ownerMap.admin;
                   const OwnerIcon = ownerInfo.icon;
                   return (
@@ -336,7 +386,7 @@ export default function FinancePage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    Nenhuma transação encontrada.
+                    Nenhuma transação encontrada no período.
                   </TableCell>
                 </TableRow>
               )}
@@ -379,6 +429,17 @@ export default function FinancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div style={{ display: 'none' }}>
+        <PrintableFinancialReport 
+          ref={reportRef} 
+          transactions={filteredTransactions} 
+          summary={periodSummary}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </div>
+
     </TooltipProvider>
   );
 }
