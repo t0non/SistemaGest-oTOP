@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Transaction } from '@/lib/definitions';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +28,14 @@ const formatPeriod = (dateString: string) => format(parseISO(dateString), "dd/MM
 
 export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportProps>(
   ({ transactions, summary, startDate, endDate }, ref) => {
+    const [generatedDate, setGeneratedDate] = useState('');
+
+    useEffect(() => {
+      // Gera a data apenas no lado do cliente, após a montagem do componente.
+      setGeneratedDate(
+        format(new Date(), "'dd 'de' MMMM 'de' yyyy', às ' HH:mm", { locale: ptBR })
+      );
+    }, []);
     
     return (
       <div ref={ref} className="bg-white text-black p-10 font-sans">
@@ -114,7 +122,7 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
             
             {/* Rodapé */}
             <footer className="text-center text-xs text-gray-500 pt-8 mt-auto">
-                <p>Relatório gerado em {format(new Date(), "'dd 'de' MMMM 'de' yyyy', às ' HH:mm", { locale: ptBR })}</p>
+                {generatedDate && <p>Relatório gerado em {generatedDate}</p>}
                 <p>TechStore Manager BH</p>
             </footer>
         </div>
