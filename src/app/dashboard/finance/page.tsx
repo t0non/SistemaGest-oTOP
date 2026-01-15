@@ -158,35 +158,35 @@ export default function FinancePage() {
   
   const [printData, setPrintData] = React.useState<any>(null);
   const reportRef = React.useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-      content: () => reportRef.current,
-      documentTitle: printData ? `Relatorio-Financeiro-${printData.startDate}-ate-${printData.endDate}` : 'Relatorio',
-      onAfterPrint: () => {
-          toast({ title: 'Relatório gerado.' });
-          setPrintData(null);
-      },
-      onPrintError: () => {
-          toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' });
-          setPrintData(null);
-      },
-  });
   
+  const handlePrint = useReactToPrint({
+    content: () => reportRef.current,
+    documentTitle: printData ? `Relatorio-Financeiro-${printData.startDate}-ate-${printData.endDate}` : 'Relatorio',
+    onAfterPrint: () => {
+        setPrintData(null); // Limpa o estado para esconder o componente de impressão
+    },
+    onPrintError: () => {
+        toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' });
+        setPrintData(null);
+    },
+  });
+
+  // Gatilho de impressão que acontece depois da renderização do componente de relatório
+  React.useEffect(() => {
+    if (printData && reportRef.current) {
+      handlePrint();
+    }
+  }, [printData, handlePrint]);
+
   const triggerPrint = () => {
+    // Apenas define os dados para impressão, o useEffect cuidará do resto
     setPrintData({
       transactions: filteredTransactions,
       summary: periodSummary,
       startDate: startDate,
       endDate: endDate,
     });
-    setTimeout(() => {
-      if (reportRef.current) {
-        handlePrint();
-      } else {
-        toast({ variant: 'destructive', title: 'Erro de Impressão', description: 'Não foi possível encontrar o conteúdo para imprimir.'});
-        setPrintData(null);
-      }
-    }, 200);
-  }
+  };
 
 
   const handleFormSuccess = () => {
