@@ -179,13 +179,7 @@ export default function FinancePage() {
   const handleDelete = () => {
     if (!selectedTransaction || !firestore) return;
 
-    deleteTransaction(firestore, selectedTransaction.id)
-      .then(() => {
-        toast({
-          title: 'Sucesso!',
-          description: 'Transação excluída com sucesso.',
-        });
-      })
+    deleteTransaction(selectedTransaction.id)
       .catch((error) => {
         toast({
           variant: 'destructive',
@@ -193,6 +187,11 @@ export default function FinancePage() {
           description: error.message || 'Não foi possível excluir a transação.',
         });
       });
+
+    toast({
+      title: 'Sucesso!',
+      description: 'Transação excluída com sucesso.',
+    });
 
     setIsAlertOpen(false);
     setSelectedTransaction(null);
@@ -436,5 +435,7 @@ export default function FinancePage() {
     </TooltipProvider>
   );
 }
+
+    
 
     
