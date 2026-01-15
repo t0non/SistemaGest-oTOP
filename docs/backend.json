@@ -1,0 +1,133 @@
+{
+  "entities": {
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client of the tech store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Client entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the client."
+        },
+        "cpf": {
+          "type": "string",
+          "description": "CPF (Cadastro de Pessoas Físicas) of the client."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number/WhatsApp of the client."
+        },
+        "address": {
+          "type": "string",
+          "description": "Full address of the client."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the client."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the client was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "cpf",
+        "phone",
+        "address"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a financial transaction (income or expense).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of transaction (income or expense).",
+          "format": "income|expense"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the transaction."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the transaction.",
+          "format": "date-time"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to Client. (Relationship: Client 1:N Transaction)",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "description",
+        "amount",
+        "date"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client data including name, CPF, phone, address, and notes. Supports client CRUD operations.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "Unique identifier for the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores financial transaction data (income/expense), linking them to clients where applicable. Supports financial record keeping and dashboard calculations. No client information is denormalized.",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "Unique identifier for the transaction."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage clients and financial transactions for the TechStore Manager BH application. It prioritizes simplicity and security.  Clients are stored in a top-level `clients` collection, while transactions are stored in a `transactions` collection. To enable authorization independence, the `transactions` documents do NOT denormalize any client information since any user should be able to `list` all transactions. The security rules will authorize transaction writes to authenticated users only, and allow reads for only authenticated users. This approach avoids complex `get()` calls in security rules and ensures atomic operations are possible. Segregation of client and transaction data into separate collections ensures a homogeneous security posture, as all documents within each collection share similar access requirements. This setup supports the core application features including client CRUD, financial records, and dashboard overviews, while maintaining a secure and scalable database structure."
+  }
+}
