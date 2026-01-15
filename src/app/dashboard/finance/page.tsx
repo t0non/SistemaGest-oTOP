@@ -72,8 +72,8 @@ export default function FinancePage() {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
 
-  const [startDate, setStartDate] = React.useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-  const [endDate, setEndDate] = React.useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
 
   const { toast } = useToast();
 
@@ -100,8 +100,15 @@ export default function FinancePage() {
   
   const filteredTransactions = React.useMemo(() => {
     if (!allTransactions) return [];
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T23:59:59');
+    
+    // If no dates are selected, return all transactions.
+    if (!startDate && !endDate) {
+        return allTransactions;
+    }
+
+    // Default to a wide range if one of the dates is missing
+    const start = startDate ? new Date(startDate + 'T00:00:00') : new Date('1970-01-01');
+    const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
     
     return allTransactions.filter(t => {
       if (!t.date) return false;
@@ -389,7 +396,7 @@ export default function FinancePage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    Nenhuma transação encontrada no período.
+                    Nenhuma transação encontrada.
                   </TableCell>
                 </TableRow>
               )}
