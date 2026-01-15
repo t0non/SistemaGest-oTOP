@@ -84,7 +84,7 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
       ...values,
       amount: unformatCurrency(values.amount),
       clientName: client?.name,
-      date: values.date ? new Date(values.date) : new Date(),
+      date: values.date ? new Date(values.date) : new Date(), // Garante que a data sempre seja um objeto Date
     };
 
     const result = transaction?.id 
