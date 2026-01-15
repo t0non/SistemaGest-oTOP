@@ -56,20 +56,18 @@ import { useReactToPrint } from 'react-to-print';
 import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
-import { useMemoFirebase } from '@/firebase';
-import { db } from '@/lib/firebase';
+import { useMemoFirebase, useFirestore, useUser } from '@/firebase';
 
 interface FinancialSummary {
   revenue: number;
   expenses: number;
   profit: number;
-  productsSold: number;
-  adminProfit: number;
-  pedroProfit: number;
 }
 
 export default function FinancePage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
+  const { isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0 });
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -82,34 +80,19 @@ export default function FinancePage() {
   const { toast } = useToast();
 
   const transactionsQuery = useMemoFirebase(() => {
-    return query(collection(db, 'transactions'), orderBy('date', 'desc'));
-  }, []);
+    if (!firestore) return null;
+    return query(collection(firestore, 'transactions'), orderBy('date', 'desc'));
+  }, [firestore]);
 
   const { data: allTransactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
-  const fetchData = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const summaryData = await getMonthlyFinancialSummary();
+  React.useEffect(() => {
+    if (!transactionsLoading) {
       const clientsData = getClients('');
-      
-      setSummary(summaryData);
       setClients(clientsData);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao buscar dados',
-        description: 'Não foi possível carregar as informações financeiras.',
-      });
-    } finally {
       setLoading(false);
     }
-  }, [toast]);
-
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData, allTransactions]);
+  }, [transactionsLoading]);
   
   const filteredTransactions = React.useMemo(() => {
     if (!allTransactions) return [];
@@ -117,6 +100,7 @@ export default function FinancePage() {
     const end = new Date(endDate + 'T23:59:59');
     
     return allTransactions.filter(t => {
+      if (!t.date) return false;
       const transactionDate = (t.date as unknown as Timestamp).toDate();
       return transactionDate >= start && transactionDate <= end;
     });
@@ -136,6 +120,7 @@ export default function FinancePage() {
     const grouped: Record<string, { income: number, expense: number }> = {};
 
     filteredTransactions.forEach(t => {
+      if (!t.date) return;
       const transactionDate = (t.date as unknown as Timestamp).toDate();
       const dayKey = format(transactionDate, 'yyyy-MM-dd');
 
@@ -192,22 +177,23 @@ export default function FinancePage() {
   };
 
   const handleDelete = () => {
-    if (!selectedTransaction) return;
+    if (!selectedTransaction || !firestore) return;
 
-    const result = deleteTransaction(selectedTransaction.id);
+    deleteTransaction(firestore, selectedTransaction.id)
+      .then(() => {
+        toast({
+          title: 'Sucesso!',
+          description: 'Transação excluída com sucesso.',
+        });
+      })
+      .catch((error) => {
+        toast({
+          variant: 'destructive',
+          title: 'Erro!',
+          description: error.message || 'Não foi possível excluir a transação.',
+        });
+      });
 
-    if (result.success) {
-      toast({
-        title: 'Sucesso!',
-        description: 'Transação excluída com sucesso.',
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Erro!',
-        description: result.message || 'Não foi possível excluir a transação.',
-      });
-    }
     setIsAlertOpen(false);
     setSelectedTransaction(null);
   };
@@ -219,11 +205,15 @@ export default function FinancePage() {
     }).format(value);
 
   const formatDate = (date: unknown) => {
+    if (!date) return "Data inválida";
     try {
         if (date instanceof Timestamp) {
             return format(date.toDate(), "dd/MM/yyyy", { locale: ptBR });
         }
-        return "Data inválida"
+        if (date instanceof Date) {
+            return format(date, "dd/MM/yyyy", { locale: ptBR });
+        }
+        return format(new Date(date as string), "dd/MM/yyyy", { locale: ptBR });
     } catch {
         return "Data inválida"
     }
@@ -234,6 +224,8 @@ export default function FinancePage() {
     pedro: { icon: User, label: 'Pedro', color: 'text-purple-500' },
     split: { icon: Users, label: 'Dividido', color: 'text-orange-500' },
   }
+  
+  const pageLoading = loading || isUserLoading || transactionsLoading;
 
   return (
     <TooltipProvider>
@@ -285,7 +277,7 @@ export default function FinancePage() {
           </Button>
         </div>
 
-        {loading || transactionsLoading ? (
+        {pageLoading ? (
             <Skeleton className="h-[410px] w-full" />
         ) : (
             <OverviewChart data={chartData} />
@@ -304,7 +296,7 @@ export default function FinancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactionsLoading ? (
+              {pageLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
                     <Skeleton className="h-8 w-full" />

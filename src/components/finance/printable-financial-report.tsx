@@ -5,6 +5,7 @@ import type { Transaction } from '@/lib/definitions';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Timestamp } from 'firebase/firestore';
 
 interface ReportProps {
   transactions: Transaction[];
@@ -23,7 +24,21 @@ const formatCurrency = (value: number) =>
       currency: 'BRL',
     }).format(value);
 
-const formatDate = (dateString: string) => format(parseISO(dateString), "dd/MM/yyyy");
+const formatDate = (date: unknown) => {
+    if (!date) return "Data inválida";
+    try {
+        if (date instanceof Timestamp) {
+            return format(date.toDate(), "dd/MM/yyyy", { locale: ptBR });
+        }
+        if (date instanceof Date) {
+            return format(date, "dd/MM/yyyy", { locale: ptBR });
+        }
+        return format(parseISO(date as string), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+        return "Data inválida"
+    }
+};
+
 const formatPeriod = (dateString: string) => format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
 
 export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportProps>(
@@ -31,7 +46,6 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
     const [generatedDate, setGeneratedDate] = useState('');
 
     useEffect(() => {
-      // Gera a data apenas no lado do cliente, após a montagem do componente.
       setGeneratedDate(
         format(new Date(), "'dd 'de' MMMM 'de' yyyy', às ' HH:mm", { locale: ptBR })
       );
