@@ -5,11 +5,17 @@ import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {DollarSign, TrendingUp, Users, Package, ArrowUp, ArrowDown, UserCheck} from 'lucide-react';
-import { getTransactions } from './finance/actions';
+import {ArrowUp, ArrowDown, UserCheck, Package, Users} from 'lucide-react';
 import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, orderBy, Timestamp, where } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase';
+import { db } from '@/lib/firebase';
+import type { Transaction } from '@/lib/definitions';
+import { TrendingUp } from 'lucide-react';
+
 
 interface FinancialSummary {
   revenue: number;
@@ -22,14 +28,20 @@ interface FinancialSummary {
 
 export default function DashboardPage() {
   const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
-  const [transactions, setTransactions] = React.useState<any[]>([]);
   const [newClientsCount, setNewClientsCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
 
-  const fetchData = React.useCallback(() => {
+  const transactionsQuery = useMemoFirebase(() => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return query(collection(db, 'transactions'), where('date', '>=', startOfMonth), orderBy('date', 'desc'));
+  }, []);
+
+  const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
+
+  const fetchData = React.useCallback(async () => {
     setLoading(true);
-    const summaryData = getMonthlyFinancialSummary();
-    const transactionsData = getTransactions();
+    const summaryData = await getMonthlyFinancialSummary();
     
     const allClients = getClients('');
     const today = new Date();
@@ -37,14 +49,18 @@ export default function DashboardPage() {
     const newClients = allClients.filter(c => new Date(c.createdAt) >= firstDayOfMonth);
 
     setSummary(summaryData);
-    setTransactions(transactionsData);
     setNewClientsCount(newClients.length);
     setLoading(false);
+  // The 'transactions' dependency is intentionally omitted to avoid re-fetches from getMonthlyFinancialSummary.
+  // The summary is designed to be a monthly snapshot, while the chart is real-time.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
     fetchData();
 
+    // This listener is for localStorage changes, which is being phased out.
+    // It's kept for now to ensure modules not yet migrated still trigger updates.
     const handleStorageChange = () => fetchData();
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('local-storage-changed', handleStorageChange);
@@ -54,20 +70,21 @@ export default function DashboardPage() {
       window.removeEventListener('local-storage-changed', handleStorageChange);
     };
   }, [fetchData]);
+  
+  React.useEffect(() => {
+    // We can also trigger a refetch of the summary when firestore transactions change.
+    fetchData();
+  }, [transactions, fetchData]);
+
 
   const chartData = React.useMemo(() => {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const filtered = transactions.filter(t => {
-      const transactionDate = parseISO(t.date);
-      return transactionDate >= firstDayOfMonth;
-    });
+    if (!transactions) return [];
 
     const grouped: Record<string, { income: number, expense: number }> = {};
 
-    filtered.forEach(t => {
-      const dayKey = format(parseISO(t.date), 'yyyy-MM-dd');
+    transactions.forEach(t => {
+      const transactionDate = (t.date as unknown as Timestamp).toDate();
+      const dayKey = format(transactionDate, 'yyyy-MM-dd');
 
       if (!grouped[dayKey]) grouped[dayKey] = { income: 0, expense: 0 };
 
@@ -98,7 +115,7 @@ export default function DashboardPage() {
       currency: 'BRL',
     }).format(value);
 
-  if (loading) {
+  if (loading || transactionsLoading) {
       return (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -119,8 +136,6 @@ export default function DashboardPage() {
           </div>
       )
   }
-
-  const profitPerPartner = summary.profit / 2;
 
   return (
     <div className="space-y-6">
@@ -154,7 +169,7 @@ export default function DashboardPage() {
         />
         <StatCard
             title="Por Sócio (50%)"
-            value={formatCurrency(profitPerPartner)}
+            value={formatCurrency(summary.profit / 2)}
             icon={UserCheck}
             description="Metade do lucro líquido"
         />

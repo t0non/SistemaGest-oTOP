@@ -13,8 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getMonthlyFinancialSummary, getTransactions, deleteTransaction } from './actions';
-import { ArrowDown, ArrowUp, DollarSign, Package, PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
+import { getMonthlyFinancialSummary, deleteTransaction } from './actions';
+import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -54,7 +54,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { useReactToPrint } from 'react-to-print';
 import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
-
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase';
+import { db } from '@/lib/firebase';
 
 interface FinancialSummary {
   revenue: number;
@@ -67,7 +70,6 @@ interface FinancialSummary {
 
 export default function FinancePage() {
   const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
-  const [allTransactions, setAllTransactions] = React.useState<Transaction[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -79,14 +81,19 @@ export default function FinancePage() {
 
   const { toast } = useToast();
 
-  const fetchData = React.useCallback(() => {
+  const transactionsQuery = useMemoFirebase(() => {
+    return query(collection(db, 'transactions'), orderBy('date', 'desc'));
+  }, []);
+
+  const { data: allTransactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
+
+  const fetchData = React.useCallback(async () => {
+    setLoading(true);
     try {
-      const summaryData = getMonthlyFinancialSummary();
-      const transactionsData = getTransactions();
+      const summaryData = await getMonthlyFinancialSummary();
       const clientsData = getClients('');
       
       setSummary(summaryData);
-      setAllTransactions(transactionsData);
       setClients(clientsData);
     } catch (error) {
       console.error(error);
@@ -102,23 +109,15 @@ export default function FinancePage() {
 
   React.useEffect(() => {
     fetchData();
-    
-    const handleStorageChange = () => fetchData();
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('local-storage-changed', handleStorageChange);
-    };
-
-  }, [fetchData]);
+  }, [fetchData, allTransactions]);
   
   const filteredTransactions = React.useMemo(() => {
+    if (!allTransactions) return [];
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T23:59:59');
+    
     return allTransactions.filter(t => {
-      const transactionDate = parseISO(t.date);
+      const transactionDate = (t.date as unknown as Timestamp).toDate();
       return transactionDate >= start && transactionDate <= end;
     });
   }, [allTransactions, startDate, endDate]);
@@ -137,7 +136,8 @@ export default function FinancePage() {
     const grouped: Record<string, { income: number, expense: number }> = {};
 
     filteredTransactions.forEach(t => {
-      const dayKey = format(parseISO(t.date), 'yyyy-MM-dd');
+      const transactionDate = (t.date as unknown as Timestamp).toDate();
+      const dayKey = format(transactionDate, 'yyyy-MM-dd');
 
       if (!grouped[dayKey]) grouped[dayKey] = { income: 0, expense: 0 };
 
@@ -174,7 +174,6 @@ export default function FinancePage() {
   const handleFormSuccess = () => {
     setIsFormOpen(false);
     setSelectedTransaction(null);
-    fetchData();
   };
   
   const openFormForNew = () => {
@@ -202,7 +201,6 @@ export default function FinancePage() {
         title: 'Sucesso!',
         description: 'Transação excluída com sucesso.',
       });
-      fetchData();
     } else {
       toast({
         variant: 'destructive',
@@ -220,9 +218,12 @@ export default function FinancePage() {
       currency: 'BRL',
     }).format(value);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (date: unknown) => {
     try {
-        return format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
+        if (date instanceof Timestamp) {
+            return format(date.toDate(), "dd/MM/yyyy", { locale: ptBR });
+        }
+        return "Data inválida"
     } catch {
         return "Data inválida"
     }
@@ -284,7 +285,7 @@ export default function FinancePage() {
           </Button>
         </div>
 
-        {loading ? (
+        {loading || transactionsLoading ? (
             <Skeleton className="h-[410px] w-full" />
         ) : (
             <OverviewChart data={chartData} />
@@ -303,7 +304,7 @@ export default function FinancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {transactionsLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
                     <Skeleton className="h-8 w-full" />

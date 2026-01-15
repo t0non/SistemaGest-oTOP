@@ -28,6 +28,7 @@ import { unformatCurrency, formatCurrency } from '@/lib/formatters';
 import type { Client, Transaction, TransactionOwner } from '@/lib/definitions';
 import { Textarea } from '../ui/textarea';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Timestamp } from 'firebase/firestore';
 
 const transactionFormSchema = z.object({
   type: z.enum(['income', 'expense'], {
@@ -39,6 +40,7 @@ const transactionFormSchema = z.object({
   }),
   owner: z.enum(['admin', 'pedro', 'split'], { required_error: 'Selecione um responsável.' }),
   clientId: z.string().optional(),
+  date: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -53,6 +55,10 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
 
+  const defaultDate = transaction?.date 
+    ? (transaction.date as unknown as Timestamp).toDate().toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
@@ -61,6 +67,7 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
       amount: transaction?.amount ? formatCurrency(transaction.amount) : '',
       owner: transaction?.owner || 'admin',
       clientId: transaction?.clientId || undefined,
+      date: defaultDate,
     },
   });
 
@@ -77,10 +84,11 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
       ...values,
       amount: unformatCurrency(values.amount),
       clientName: client?.name,
+      date: values.date ? new Date(values.date) : new Date(),
     };
 
     const result = transaction?.id 
-        ? updateTransaction(transaction.id, dataToSave)
+        ? updateTransaction(transaction.id, dataToSave as any)
         : addTransaction(dataToSave);
 
     if (result.success) {
@@ -172,24 +180,42 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Valor</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  placeholder="R$ 0,00"
-                  {...field}
-                  onChange={handleCurrencyChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Valor</FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    placeholder="R$ 0,00"
+                    {...field}
+                    onChange={handleCurrencyChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="clientId"

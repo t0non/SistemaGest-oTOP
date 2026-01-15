@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase/firestore";
 
 export type Client = {
   id: string;
@@ -17,7 +18,7 @@ export type Transaction = {
   type: 'income' | 'expense';
   description: string;
   amount: number;
-  date: string;
+  date: Date | Timestamp;
   owner: TransactionOwner;
   clientId?: string;
   clientName?: string;
