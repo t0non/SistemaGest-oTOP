@@ -101,12 +101,10 @@ export default function FinancePage() {
   const filteredTransactions = React.useMemo(() => {
     if (!allTransactions) return [];
     
-    // If no dates are selected, return all transactions.
     if (!startDate && !endDate) {
         return allTransactions;
     }
 
-    // Default to a wide range if one of the dates is missing
     const start = startDate ? new Date(startDate + 'T00:00:00') : new Date('1970-01-01');
     const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
     
@@ -157,14 +155,38 @@ export default function FinancePage() {
         return parseInt(dayA) - parseInt(dayB);
     });
   }, [filteredTransactions]);
-
+  
+  const [printData, setPrintData] = React.useState<any>(null);
   const reportRef = React.useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
       content: () => reportRef.current,
-      documentTitle: `Relatorio-Financeiro-${startDate}-ate-${endDate}`,
-      onAfterPrint: () => toast({ title: 'Relatório gerado.' }),
-      onPrintError: () => toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' }),
+      documentTitle: printData ? `Relatorio-Financeiro-${printData.startDate}-ate-${printData.endDate}` : 'Relatorio',
+      onAfterPrint: () => {
+          toast({ title: 'Relatório gerado.' });
+          setPrintData(null);
+      },
+      onPrintError: () => {
+          toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' });
+          setPrintData(null);
+      },
   });
+  
+  const triggerPrint = () => {
+    setPrintData({
+      transactions: filteredTransactions,
+      summary: periodSummary,
+      startDate: startDate,
+      endDate: endDate,
+    });
+    setTimeout(() => {
+      if (reportRef.current) {
+        handlePrint();
+      } else {
+        toast({ variant: 'destructive', title: 'Erro de Impressão', description: 'Não foi possível encontrar o conteúdo para imprimir.'});
+        setPrintData(null);
+      }
+    }, 200);
+  }
 
 
   const handleFormSuccess = () => {
@@ -223,7 +245,6 @@ export default function FinancePage() {
         if (date instanceof Date) {
             return format(date, "dd/MM/yyyy", { locale: ptBR });
         }
-        // Handle ISO string
         if (typeof date === 'string') {
           const parsedDate = parseISO(date);
           if (!isNaN(parsedDate.getTime())) {
@@ -278,7 +299,7 @@ export default function FinancePage() {
             </div>
              <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button onClick={handlePrint} variant="outline" size="icon">
+                    <Button onClick={triggerPrint} variant="outline" size="icon">
                         <Printer className="h-4 w-4" />
                         <span className="sr-only">Imprimir Relatório</span>
                     </Button>
@@ -441,13 +462,15 @@ export default function FinancePage() {
       </AlertDialog>
 
       <div style={{ display: 'none' }}>
-        <PrintableFinancialReport 
-          ref={reportRef} 
-          transactions={filteredTransactions} 
-          summary={periodSummary}
-          startDate={startDate}
-          endDate={endDate}
-        />
+        {printData && (
+            <PrintableFinancialReport 
+              ref={reportRef} 
+              transactions={printData.transactions} 
+              summary={printData.summary}
+              startDate={printData.startDate}
+              endDate={printData.endDate}
+            />
+        )}
       </div>
 
     </TooltipProvider>
