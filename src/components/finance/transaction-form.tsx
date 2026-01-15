@@ -22,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { addTransaction, updateTransaction } from '@/app/dashboard/finance/actions';
 import { unformatCurrency, formatCurrency } from '@/lib/formatters';
@@ -29,6 +36,8 @@ import type { Client, Transaction, TransactionOwner } from '@/lib/definitions';
 import { Textarea } from '../ui/textarea';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Timestamp } from 'firebase/firestore';
+import { ClientForm } from '../clients/client-form';
+import { PlusCircle } from 'lucide-react';
 
 const transactionFormSchema = z.object({
   type: z.enum(['income', 'expense'], {
@@ -53,6 +62,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ transaction, clients, onSuccess }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isClientFormOpen, setIsClientFormOpen] = React.useState(false);
   const { toast } = useToast();
 
   const defaultDate = transaction?.date 
@@ -74,6 +84,13 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     form.setValue('amount', formatCurrency(e.target.value));
   };
+
+  const handleNewClientSuccess = () => {
+    setIsClientFormOpen(false);
+    // The useCollection hook on the parent page will automatically refresh the client list
+    // We could try to auto-select the new client, but that adds complexity.
+    // For now, just closing the dialog is sufficient.
+  }
   
   async function onSubmit(values: TransactionFormValues) {
     setIsSubmitting(true);
@@ -84,7 +101,7 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
       ...values,
       amount: unformatCurrency(values.amount),
       clientName: client?.name,
-      date: new Date(values.date), 
+      date: new Date(values.date + 'T12:00:00Z'), // Add time to avoid timezone issues
     };
 
     const result = transaction?.id 
@@ -108,142 +125,162 @@ export function TransactionForm({ transaction, clients, onSuccess }: Transaction
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="owner"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>Responsável</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-row space-x-4"
-                >
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="admin" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Eduardo</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="pedro" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Pedro</FormLabel>
-                  </FormItem>
-                   <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="split" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Dividido</FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tipo</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="income">Entrada</SelectItem>
-                  <SelectItem value="expense">Saída</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Ex: Pagamento de aluguel" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-2 gap-4">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="amount"
+            name="owner"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor</FormLabel>
+              <FormItem className="space-y-3">
+                <FormLabel>Responsável</FormLabel>
                 <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="R$ 0,00"
-                    {...field}
-                    onChange={handleCurrencyChange}
-                  />
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-row space-x-4"
+                  >
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="admin" />
+                      </FormControl>
+                      <FormLabel className="font-normal">Eduardo</FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="pedro" />
+                      </FormControl>
+                      <FormLabel className="font-normal">Pedro</FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="split" />
+                      </FormControl>
+                      <FormLabel className="font-normal">Dividido</FormLabel>
+                    </FormItem>
+                  </RadioGroup>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-           <FormField
+          <FormField
             control={form.control}
-            name="date"
+            name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Data</FormLabel>
+                <FormLabel>Tipo</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="income">Entrada</SelectItem>
+                    <SelectItem value="expense">Saída</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descrição</FormLabel>
                 <FormControl>
-                  <Input
-                    type="date"
-                    {...field}
-                  />
+                  <Textarea placeholder="Ex: Pagamento de aluguel" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
-        <FormField
-          control={form.control}
-          name="clientId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Vincular a um Cliente (Opcional)</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Salvando...' : transaction?.id ? 'Salvar Alterações' : 'Adicionar Movimentação'}
-        </Button>
-      </form>
-    </Form>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Valor</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="R$ 0,00"
+                      {...field}
+                      onChange={handleCurrencyChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={form.control}
+            name="clientId"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex justify-between items-center mb-2">
+                  <FormLabel>Vincular a um Cliente (Opcional)</FormLabel>
+                   <Button type="button" variant="outline" size="sm" onClick={() => setIsClientFormOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Novo Cliente
+                   </Button>
+                </div>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Salvando...' : transaction?.id ? 'Salvar Alterações' : 'Adicionar Movimentação'}
+          </Button>
+        </form>
+      </Form>
+      
+      <Dialog open={isClientFormOpen} onOpenChange={setIsClientFormOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="font-headline">Novo Cliente</DialogTitle>
+                <DialogDescription>
+                    Cadastre um novo cliente rapidamente. Ele será salvo no seu banco de dados.
+                </DialogDescription>
+            </DialogHeader>
+            <ClientForm onSuccess={handleNewClientSuccess} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
