@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { z } from 'zod';
 import type { Transaction } from '@/lib/definitions';
-import { db } from '@/lib/firebase';
+import { db } from '@/firebase/config';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const transactionSchema = z.object({
@@ -81,12 +81,14 @@ export function updateTransaction(
   }
 }
 
-export function deleteTransaction(id: string): { success: boolean, message?: string } {
-  try {
-    const docRef = doc(db, 'transactions', id);
-    deleteDocumentNonBlocking(docRef);
-    return { success: true, message: 'Transação excluída com sucesso.' };
-  } catch (e: any) {
-    return { success: false, message: e.message || 'Ocorreu um erro ao excluir a transação.' };
-  }
+export function deleteTransaction(id: string): Promise<{ success: boolean, message?: string }> {
+  return new Promise((resolve) => {
+      try {
+          const docRef = doc(db, 'transactions', id);
+          deleteDocumentNonBlocking(docRef);
+          resolve({ success: true, message: 'Transação excluída com sucesso.' });
+      } catch (e: any) {
+          resolve({ success: false, message: e.message || 'Ocorreu um erro ao excluir a transação.' });
+      }
+  });
 }

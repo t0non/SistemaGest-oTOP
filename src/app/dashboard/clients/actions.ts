@@ -6,8 +6,9 @@ import {
   doc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirestore } from '@/firebase';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { db } from '@/firebase/config';
 
 const clientSchema = z.object({
   name: z.string().min(3, {message: 'O nome deve ter pelo menos 3 caracteres.'}),

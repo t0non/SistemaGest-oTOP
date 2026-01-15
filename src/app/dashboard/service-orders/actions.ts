@@ -5,7 +5,7 @@ import type { ServiceOrder, ServiceOrderItem } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/firebase/config';
 
 const serviceOrderItemSchema = z.object({
   id: z.string(),
