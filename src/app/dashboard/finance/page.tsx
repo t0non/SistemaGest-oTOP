@@ -173,10 +173,24 @@ export default function FinancePage() {
 
   // Gatilho de impressão que acontece depois da renderização do componente de relatório
   React.useEffect(() => {
-    if (printData && reportRef.current) {
-      handlePrint();
+    if (printData) {
+      // Este timeout garante que o componente de impressão tenha tempo para renderizar antes de a impressão ser chamada.
+      const timer = setTimeout(() => {
+        if (reportRef.current) {
+          handlePrint();
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Erro de Impressão',
+            description: 'Não foi possível encontrar o conteúdo para imprimir.',
+          });
+          setPrintData(null); // Limpa o estado em caso de erro.
+        }
+      }, 100); // Um pequeno atraso para garantir a renderização.
+
+      return () => clearTimeout(timer);
     }
-  }, [printData, handlePrint]);
+  }, [printData, handlePrint, toast]);
 
   const triggerPrint = () => {
     // Apenas define os dados para impressão, o useEffect cuidará do resto
