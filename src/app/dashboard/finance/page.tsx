@@ -163,7 +163,7 @@ export default function FinancePage() {
     content: () => reportRef.current,
     documentTitle: printData ? `Relatorio-Financeiro-${printData.startDate}-ate-${printData.endDate}` : 'Relatorio',
     onAfterPrint: () => {
-        setPrintData(null); // Limpa o estado para esconder o componente de impressão
+        setPrintData(null);
     },
     onPrintError: () => {
         toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' });
@@ -171,29 +171,13 @@ export default function FinancePage() {
     },
   });
 
-  // Gatilho de impressão que acontece depois da renderização do componente de relatório
   React.useEffect(() => {
-    if (printData) {
-      // Este timeout garante que o componente de impressão tenha tempo para renderizar antes de a impressão ser chamada.
-      const timer = setTimeout(() => {
-        if (reportRef.current) {
-          handlePrint();
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Erro de Impressão',
-            description: 'Não foi possível encontrar o conteúdo para imprimir.',
-          });
-          setPrintData(null); // Limpa o estado em caso de erro.
-        }
-      }, 100); // Um pequeno atraso para garantir a renderização.
-
-      return () => clearTimeout(timer);
+    if (printData && reportRef.current) {
+      handlePrint();
     }
-  }, [printData, handlePrint, toast]);
+  }, [printData, handlePrint]);
 
   const triggerPrint = () => {
-    // Apenas define os dados para impressão, o useEffect cuidará do resto
     setPrintData({
       transactions: filteredTransactions,
       summary: periodSummary,
@@ -476,15 +460,13 @@ export default function FinancePage() {
       </AlertDialog>
 
       <div style={{ display: 'none' }}>
-        {printData && (
-            <PrintableFinancialReport 
-              ref={reportRef} 
-              transactions={printData.transactions} 
-              summary={printData.summary}
-              startDate={printData.startDate}
-              endDate={printData.endDate}
-            />
-        )}
+        <PrintableFinancialReport 
+          ref={reportRef} 
+          transactions={printData ? printData.transactions : []} 
+          summary={printData ? printData.summary : { revenue: 0, expenses: 0, profit: 0 }}
+          startDate={printData ? printData.startDate : ''}
+          endDate={printData ? printData.endDate : ''}
+        />
       </div>
 
     </TooltipProvider>
