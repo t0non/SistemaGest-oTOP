@@ -156,35 +156,11 @@ export default function FinancePage() {
     });
   }, [filteredTransactions]);
   
-  const [printData, setPrintData] = React.useState<any>(null);
   const reportRef = React.useRef<HTMLDivElement>(null);
-  
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
-    documentTitle: printData ? `Relatorio-Financeiro-${printData.startDate}-ate-${printData.endDate}` : 'Relatorio',
-    onAfterPrint: () => {
-        setPrintData(null);
-    },
-    onPrintError: () => {
-        toast({ variant: 'destructive', title: 'Erro ao gerar relatório.' });
-        setPrintData(null);
-    },
+    documentTitle: `Relatorio-Financeiro-${startDate}-ate-${endDate}`,
   });
-
-  React.useEffect(() => {
-    if (printData && reportRef.current) {
-      handlePrint();
-    }
-  }, [printData, handlePrint]);
-
-  const triggerPrint = () => {
-    setPrintData({
-      transactions: filteredTransactions,
-      summary: periodSummary,
-      startDate: startDate,
-      endDate: endDate,
-    });
-  };
 
 
   const handleFormSuccess = () => {
@@ -297,7 +273,7 @@ export default function FinancePage() {
             </div>
              <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button onClick={triggerPrint} variant="outline" size="icon">
+                    <Button onClick={handlePrint} variant="outline" size="icon">
                         <Printer className="h-4 w-4" />
                         <span className="sr-only">Imprimir Relatório</span>
                     </Button>
@@ -462,10 +438,10 @@ export default function FinancePage() {
       <div style={{ position: 'absolute', left: '-9999px' }}>
         <PrintableFinancialReport 
           ref={reportRef} 
-          transactions={printData ? printData.transactions : []} 
-          summary={printData ? printData.summary : { revenue: 0, expenses: 0, profit: 0 }}
-          startDate={printData ? printData.startDate : ''}
-          endDate={printData ? printData.endDate : ''}
+          transactions={filteredTransactions} 
+          summary={periodSummary}
+          startDate={startDate}
+          endDate={endDate}
         />
       </div>
 
