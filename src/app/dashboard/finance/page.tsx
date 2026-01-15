@@ -76,6 +76,13 @@ export default function FinancePage() {
   const [endDate, setEndDate] = React.useState('');
 
   const { toast } = useToast();
+  
+  const reportRef = React.useRef<HTMLDivElement>(null);
+  
+  const handlePrint = useReactToPrint({
+    content: () => reportRef.current,
+    documentTitle: `Relatorio-Financeiro-${startDate || 'inicio'}-ate-${endDate || 'fim'}`,
+  });
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -155,13 +162,6 @@ export default function FinancePage() {
         return parseInt(dayA) - parseInt(dayB);
     });
   }, [filteredTransactions]);
-  
-  const reportRef = React.useRef<HTMLDivElement>(null);
-  
-  const handlePrint = useReactToPrint({
-    content: () => reportRef.current,
-    documentTitle: `Relatorio-Financeiro-${startDate || 'inicio'}-ate-${endDate || 'fim'}`,
-  });
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
