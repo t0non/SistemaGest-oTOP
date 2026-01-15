@@ -72,6 +72,11 @@ export default function FinancePage() {
   
   const reportRef = React.useRef<HTMLDivElement>(null);
 
+  const handlePrint = useReactToPrint({
+    content: () => reportRef.current,
+    documentTitle: `Relatorio-Financeiro-${format(new Date(), 'dd-MM-yyyy')}`,
+  });
+
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'transactions'), orderBy('date', 'desc'));
@@ -146,11 +151,6 @@ export default function FinancePage() {
         return parseInt(dayA) - parseInt(dayB);
     });
   }, [filteredTransactions]);
-
-  const handlePrint = useReactToPrint({
-    content: () => reportRef.current,
-    documentTitle: `Relatorio-Financeiro-${format(new Date(), 'dd-MM-yyyy')}`,
-  });
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
@@ -416,13 +416,14 @@ export default function FinancePage() {
       </AlertDialog>
 
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
-        <PrintableFinancialReport
-            ref={reportRef}
-            transactions={filteredTransactions}
-            summary={summary}
-            startDate={startDate}
-            endDate={endDate}
-        />
+        <div ref={reportRef}>
+            <PrintableFinancialReport
+                transactions={filteredTransactions}
+                summary={summary}
+                startDate={startDate}
+                endDate={endDate}
+            />
+        </div>
       </div>
     </TooltipProvider>
   );

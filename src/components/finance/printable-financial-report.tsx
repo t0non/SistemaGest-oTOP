@@ -4,7 +4,6 @@ import React from 'react';
 import type { Transaction } from '@/lib/definitions';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { Timestamp } from 'firebase/firestore';
 
 interface ReportProps {
@@ -57,8 +56,7 @@ const formatPeriod = (start: string, end: string) => {
 };
 
 
-export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportProps>(
-  ({ transactions, summary, startDate, endDate }, ref) => {
+export const PrintableFinancialReport = ({ transactions, summary, startDate, endDate }: ReportProps) => {
     
     const ownerMap = {
       admin: 'Eduardo',
@@ -67,7 +65,7 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
     };
     
     return (
-      <div ref={ref} className="p-8 bg-white text-black print:p-0 w-full max-w-4xl mx-auto">
+      <div className="p-8 bg-white text-black print:p-0 w-full max-w-4xl mx-auto">
         {/* --- CABEÇALHO --- */}
         <div className="mb-8 border-b pb-4 flex justify-between items-end">
             <div>
@@ -163,7 +161,4 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
         </div>
       </div>
     );
-  }
-);
-
-PrintableFinancialReport.displayName = 'PrintableFinancialReport';
+};
