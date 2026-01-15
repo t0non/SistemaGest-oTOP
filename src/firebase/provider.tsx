@@ -80,10 +80,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
-        if (!firebaseUser) {
+        if (firebaseUser) {
+          // If we have a user (anonymous or real), auth is complete.
+          setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        } else {
+          // If there is no user, initiate anonymous sign-in.
+          // The loading state will remain true until this process completes
+          // and onAuthStateChanged is called again with the new anonymous user.
           initiateAnonymousSignIn(auth);
         }
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
