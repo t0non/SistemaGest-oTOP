@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ServiceOrder, ServiceOrderItem } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const serviceOrderItemSchema = z.object({
@@ -21,7 +21,7 @@ const serviceOrderSchema = z.object({
   problemDescription: z.string().optional(),
   status: z.enum(ServiceOrderStatus),
   notes: z.string().optional(),
-  entryDate: z.string(),
+  entryDate: z.union([z.string(), z.instanceof(Timestamp)]),
   items: z.array(serviceOrderItemSchema).min(1, 'Adicione pelo menos um item de serviço.'),
 });
 
@@ -47,9 +47,18 @@ export function addServiceOrder(
   
   try {
     const finalValue = calculateFinalValue(validation.data.items);
+    
+    let entryDate: Timestamp;
+    if (typeof validation.data.entryDate === 'string') {
+        entryDate = Timestamp.fromDate(new Date(validation.data.entryDate + 'T12:00:00Z'));
+    } else {
+        entryDate = validation.data.entryDate;
+    }
+
 
     const newServiceOrder: Omit<ServiceOrder, 'id'> = {
       ...validation.data,
+      entryDate,
       finalValue,
       createdAt: serverTimestamp(),
     } as unknown as Omit<ServiceOrder, 'id'>;
@@ -64,10 +73,13 @@ export function addServiceOrder(
 
 export function updateServiceOrder(
   id: string,
-  data: Partial<z.infer<typeof serviceOrderSchema>>
+  data: Partial<Omit<z.infer<typeof serviceOrderSchema>, 'entryDate'> & { entryDate?: string | Date | Timestamp }>
 ): ActionResponse {
   
-  const validation = serviceOrderSchema.partial().safeParse(data);
+  // Use a more flexible schema for partial updates
+  const partialSchema = serviceOrderSchema.partial();
+  const validation = partialSchema.safeParse(data);
+
   if (!validation.success) {
     console.error(validation.error.flatten());
     return { success: false, message: 'Dados de atualização inválidos.' };
@@ -75,10 +87,16 @@ export function updateServiceOrder(
 
   try {
     const osRef = doc(db, 'serviceOrders', id);
-    let dataToUpdate = { ...validation.data };
+    let dataToUpdate = { ...validation.data } as any;
 
-    if(data.items) {
-        (dataToUpdate as any).finalValue = calculateFinalValue(data.items);
+    if (data.items) {
+        dataToUpdate.finalValue = calculateFinalValue(data.items);
+    }
+
+    if (data.entryDate && typeof data.entryDate === 'string') {
+        dataToUpdate.entryDate = Timestamp.fromDate(new Date(data.entryDate + 'T12:00:00Z'));
+    } else if (data.entryDate instanceof Date) {
+        dataToUpdate.entryDate = Timestamp.fromDate(data.entryDate);
     }
     
     updateDocumentNonBlocking(osRef, dataToUpdate);

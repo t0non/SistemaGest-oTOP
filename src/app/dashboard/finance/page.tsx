@@ -48,14 +48,13 @@ import {
 import { TransactionForm } from '@/components/finance/transaction-form';
 import type { Transaction } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
-import { getClients } from '../clients/actions';
 import type { Client } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { useReactToPrint } from 'react-to-print';
 import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { useMemoFirebase, useFirestore, useUser } from '@/firebase';
 
 interface FinancialSummary {
@@ -83,16 +82,22 @@ export default function FinancePage() {
     if (!firestore) return null;
     return query(collection(firestore, 'transactions'), orderBy('date', 'desc'));
   }, [firestore]);
+  
+  const clientsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'clients'));
+  }, [firestore]);
+
 
   const { data: allTransactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
+  const { data: allClients, isLoading: clientsLoading } = useCollection<Client>(clientsQuery);
 
   React.useEffect(() => {
-    if (!transactionsLoading) {
-      const clientsData = getClients('');
-      setClients(clientsData);
-      setLoading(false);
+    if (!clientsLoading && allClients) {
+        setClients(allClients);
+        setLoading(false);
     }
-  }, [transactionsLoading]);
+  }, [clientsLoading, allClients]);
   
   const filteredTransactions = React.useMemo(() => {
     if (!allTransactions) return [];
@@ -176,25 +181,24 @@ export default function FinancePage() {
     setIsAlertOpen(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedTransaction) return;
 
-    deleteTransaction(selectedTransaction.id)
-      .then(() => {
-        toast({
-          title: 'Sucesso!',
-          description: 'Transação excluída com sucesso.',
-        });
-        setIsAlertOpen(false);
-        setSelectedTransaction(null);
-      })
-      .catch((error) => {
-        toast({
-          variant: 'destructive',
-          title: 'Erro!',
-          description: error.message || 'Não foi possível excluir a transação.',
-        });
+    try {
+      await deleteTransaction(selectedTransaction.id)
+      toast({
+        title: 'Sucesso!',
+        description: 'Transação excluída com sucesso.',
       });
+      setIsAlertOpen(false);
+      setSelectedTransaction(null);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro!',
+        description: error.message || 'Não foi possível excluir a transação.',
+      });
+    }
   };
 
   const formatCurrency = (value: number) =>
@@ -435,7 +439,3 @@ export default function FinancePage() {
     </TooltipProvider>
   );
 }
-
-    
-
-    

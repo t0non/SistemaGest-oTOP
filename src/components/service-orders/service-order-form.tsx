@@ -67,7 +67,7 @@ export function ServiceOrderForm({
 
   const getInitialDate = () => {
     if (serviceOrder?.entryDate) {
-        const d = (serviceOrder.entryDate as unknown as Timestamp)?.toDate ? (serviceOrder.entryDate as unknown as Timestamp).toDate() : new Date(serviceOrder.entryDate);
+        const d = (serviceOrder.entryDate as unknown as Timestamp)?.toDate ? (serviceOrder.entryDate as unknown as Timestamp).toDate() : new Date(serviceOrder.entryDate as string);
         if (!isNaN(d.getTime())) {
             return d.toISOString().split('T')[0];
         }
@@ -109,13 +109,10 @@ export function ServiceOrderForm({
         setIsSubmitting(false);
         return;
     }
-    
-    const entryDate = new Date(values.entryDate + 'T12:00:00Z');
 
     const dataToSave = {
         ...values,
         clientName: selectedClient.name,
-        entryDate: Timestamp.fromDate(entryDate),
     };
     
     const result = serviceOrder?.id

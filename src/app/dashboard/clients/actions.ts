@@ -3,16 +3,10 @@
 import { z } from 'zod';
 import {
   collection,
-  query,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
   doc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Client } from '@/lib/definitions';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const clientSchema = z.object({
@@ -23,26 +17,6 @@ const clientSchema = z.object({
   notes: z.string().optional(),
 });
 
-
-export async function getClients(queryStr: string): Promise<Client[]> {
-  const clientsRef = collection(db, 'clients');
-  const q = queryStr 
-    ? query(clientsRef, /* Adicionar lógicas de where() se necessário */)
-    : query(clientsRef);
-
-  const querySnapshot = await getDocs(q);
-  let clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-  
-  if (queryStr) {
-      const lowercasedQuery = queryStr.toLowerCase();
-      clients = clients.filter(client => 
-        client.name.toLowerCase().includes(lowercasedQuery) || 
-        client.cpf.includes(lowercasedQuery)
-      );
-  }
-
-  return clients.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
 
 export function addClient(
   data: z.infer<typeof clientSchema>

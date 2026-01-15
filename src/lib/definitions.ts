@@ -7,7 +7,7 @@ export type Client = {
   phone: string;
   address: string;
   notes?: string;
-  createdAt: string; // ISO String, mas pode vir como Timestamp do Firestore
+  createdAt: string | Timestamp; // ISO String, mas pode vir como Timestamp do Firestore
 };
 
 export const TransactionOwner = ['admin', 'pedro', 'split'] as const;
