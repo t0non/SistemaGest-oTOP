@@ -54,7 +54,7 @@ import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { useReactToPrint } from 'react-to-print';
 import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase, useFirestore, useUser } from '@/firebase';
 
 interface FinancialSummary {
@@ -74,7 +74,6 @@ export default function FinancePage() {
 
   const [startDate, setStartDate] = React.useState('');
   const [endDate, setEndDate] = React.useState('');
-  const [isPrinting, setIsPrinting] = React.useState(false);
 
   const { toast } = useToast();
 
@@ -161,16 +160,8 @@ export default function FinancePage() {
   
   const handlePrint = useReactToPrint({
     content: () => reportRef.current,
-    documentTitle: `Relatorio-Financeiro-${startDate}-ate-${endDate}`,
-    onAfterPrint: () => setIsPrinting(false),
+    documentTitle: `Relatorio-Financeiro-${startDate || 'inicio'}-ate-${endDate || 'fim'}`,
   });
-
-  React.useEffect(() => {
-    if (isPrinting) {
-      handlePrint();
-    }
-  }, [isPrinting, handlePrint]);
-
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
@@ -282,7 +273,7 @@ export default function FinancePage() {
             </div>
              <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button onClick={() => setIsPrinting(true)} variant="outline" size="icon">
+                    <Button onClick={handlePrint} variant="outline" size="icon">
                         <Printer className="h-4 w-4" />
                         <span className="sr-only">Imprimir Relatório</span>
                     </Button>
@@ -444,17 +435,15 @@ export default function FinancePage() {
         </AlertDialogContent>
       </AlertDialog>
       
-      {isPrinting && (
-        <div style={{ position: 'absolute', left: '-9999px' }}>
-          <PrintableFinancialReport 
-            ref={reportRef} 
-            transactions={filteredTransactions} 
-            summary={periodSummary}
-            startDate={startDate}
-            endDate={endDate}
-          />
-        </div>
-      )}
+      <div style={{ position: 'absolute', left: '-9999px' }}>
+        <PrintableFinancialReport 
+          ref={reportRef} 
+          transactions={filteredTransactions} 
+          summary={periodSummary}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </div>
 
     </TooltipProvider>
   );
