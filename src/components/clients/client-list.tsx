@@ -44,7 +44,7 @@ import {deleteClient} from '@/app/dashboard/clients/actions';
 import {MoreHorizontal, PlusCircle, Trash2, Edit, MessageSquare} from 'lucide-react';
 import { formatCPF, formatPhone } from '@/lib/formatters';
 
-export function ClientList({initialClients}: {initialClients: Client[]}) {
+export function ClientList({clients}: {clients: Client[]}) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedClient, setSelectedClient] = React.useState<Client | null>(
@@ -138,8 +138,8 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialClients && initialClients.length > 0 ? (
-              initialClients.map((client) => (
+            {clients && clients.length > 0 ? (
+              clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">

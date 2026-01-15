@@ -40,7 +40,7 @@ function ClientsPageContent() {
     return <Skeleton className="h-96 w-full" />;
   }
 
-  return <ClientList initialClients={filteredClients} />;
+  return <ClientList clients={filteredClients} />;
 }
 
 
