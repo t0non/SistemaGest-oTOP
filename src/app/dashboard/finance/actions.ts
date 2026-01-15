@@ -23,7 +23,7 @@ const transactionSchema = z.object({
   owner: z.enum(['admin', 'pedro', 'split']),
   clientId: z.string().optional(),
   clientName: z.string().optional(),
-  date: z.instanceof(Date),
+  date: z.date(),
 });
 
 export function addTransaction(
@@ -56,11 +56,10 @@ export function addTransaction(
 
 export function updateTransaction(
   id: string,
-  data: Omit<Transaction, 'id' | 'date'>
+  data: Omit<Transaction, 'id' | 'date'> & { date: Date }
 ): { success: boolean; message?: string } {
   try {
-    const date = new Date(); // Date is not updated, but needed for validation
-    const validation = transactionSchema.safeParse({ ...data, date });
+    const validation = transactionSchema.safeParse(data);
 
     if (!validation.success) {
       console.error(validation.error.flatten());
@@ -68,27 +67,41 @@ export function updateTransaction(
     }
 
     const docRef = doc(db, 'transactions', id);
-    const { date: _, ...dataToUpdate } = validation.data; // Remove date from update data
+    // Firestore updates require plain objects, so we might need to adjust if 'date' is a custom object
+    // For this schema, `date` is part of the validation but we might not want to update it.
+    // If date update is not allowed, it should be removed from dataToUpdate.
+    const { date: validatedDate, ...dataToUpdate } = validation.data;
+    
+    // Example: To avoid updating the date, but keep it for validation
+    // const { date, ...dataToUpdate } = validation.data;
+    
+    // If you need to update the date, convert it to a Timestamp
+    const finalData = {
+        ...dataToUpdate,
+        date: Timestamp.fromDate(validatedDate)
+    };
 
-    updateDocumentNonBlocking(docRef, dataToUpdate);
+
+    updateDocumentNonBlocking(docRef, finalData);
 
     return { success: true, message: 'Transação atualizada com sucesso.' };
   } catch (e: any) {
     return {
       success: false,
-      message: 'Ocorreu um erro ao atualizar a transação.',
+      message: e.message || 'Ocorreu um erro ao atualizar a transação.',
     };
   }
 }
 
-export function deleteTransaction(id: string): Promise<{ success: boolean, message?: string }> {
+export function deleteTransaction(id: string): Promise<{ success: boolean; message?: string }> {
   return new Promise((resolve) => {
-      try {
-          const docRef = doc(db, 'transactions', id);
-          deleteDocumentNonBlocking(docRef);
-          resolve({ success: true, message: 'Transação excluída com sucesso.' });
-      } catch (e: any) {
-          resolve({ success: false, message: e.message || 'Ocorreu um erro ao excluir a transação.' });
-      }
+    try {
+      const docRef = doc(db, 'transactions', id);
+      deleteDocumentNonBlocking(docRef);
+      resolve({ success: true, message: 'Transação excluída com sucesso.' });
+    } catch (e: any) {
+      console.error("Deletion error:", e);
+      resolve({ success: false, message: e.message || 'Ocorreu um erro ao excluir a transação.' });
+    }
   });
 }

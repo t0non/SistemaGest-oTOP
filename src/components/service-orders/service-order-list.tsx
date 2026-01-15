@@ -80,7 +80,7 @@ export function ServiceOrderList({
   const reciboRef = React.useRef<HTMLDivElement>(null);
   const printRecibo = useReactToPrint({
     content: () => reciboRef.current,
-    documentTitle: `Recibo-${reciboData?.id}`,
+    documentTitle: `Recibo-${reciboData?.id?.slice(0,6)}`,
     onPrintError: (error) => console.error("Erro impressão recibo:", error),
   });
 
@@ -101,7 +101,7 @@ export function ServiceOrderList({
   const orcamentoRef = React.useRef<HTMLDivElement>(null);
   const printOrcamento = useReactToPrint({
     content: () => orcamentoRef.current,
-    documentTitle: `Orcamento-${orcamentoData?.id}`,
+    documentTitle: `Orcamento-${orcamentoData?.id?.slice(0,6)}`,
     onPrintError: (error) => console.error("Erro impressão orçamento:", error),
   });
 
@@ -136,7 +136,7 @@ export function ServiceOrderList({
 
     const transactionData = {
         type: 'income' as const,
-        description: `Recebimento OS ${osToFinalize.id} - ${osToFinalize.equipment}`,
+        description: `Recebimento OS #${osToFinalize.id.slice(0,6)} - ${osToFinalize.equipment}`,
         amount: osToFinalize.finalValue,
         clientId: osToFinalize.clientId,
         clientName: osToFinalize.clientName,
@@ -149,7 +149,7 @@ export function ServiceOrderList({
     if (result.success) {
         toast({
             title: "Sucesso!",
-            description: `Lançamento de R$ ${osToFinalize.finalValue.toFixed(2)} para a OS ${osToFinalize.id} criado.`,
+            description: `Lançamento de R$ ${osToFinalize.finalValue.toFixed(2)} para a OS #${osToFinalize.id.slice(0,6)} criado.`,
         });
     } else {
         toast({
@@ -165,6 +165,7 @@ export function ServiceOrderList({
     if (!date) return "Data inválida";
     try {
         const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : new Date(date as string);
+        if (isNaN(d.getTime())) return "Data inválida";
         return format(d, "dd/MM/yyyy", { locale: ptBR });
     } catch {
       return "Data inválida";
@@ -204,7 +205,7 @@ export function ServiceOrderList({
             {initialServiceOrders.length > 0 ? (
               initialServiceOrders.map((os) => {
                 const client = clients.find(c => c.id === os.clientId);
-                const orderWithCpf = { ...os, clientCpf: client?.cpf };
+                const orderWithCpf = client ? { ...os, clientCpf: client.cpf } : os;
                 return (
                   <TableRow key={os.id}>
                     <TableCell className="font-bold hidden sm:table-cell">{os.id.substring(0, 8)}</TableCell>
@@ -315,7 +316,7 @@ export function ServiceOrderList({
               <span className="font-bold">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(osToFinalize?.finalValue || 0)}
               </span>{' '}
-              para a OS <span className="font-bold">{osToFinalize?.id}</span>?
+              para a OS <span className="font-bold">#{osToFinalize?.id.slice(0,6)}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

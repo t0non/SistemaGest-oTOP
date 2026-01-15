@@ -33,7 +33,14 @@ const formatDate = (date: unknown) => {
         if (date instanceof Date) {
             return format(date, "dd/MM/yyyy", { locale: ptBR });
         }
-        return format(parseISO(date as string), "dd/MM/yyyy", { locale: ptBR });
+        // Handle ISO string
+        if (typeof date === 'string') {
+          const parsedDate = parseISO(date);
+          if (!isNaN(parsedDate.getTime())) {
+            return format(parsedDate, "dd/MM/yyyy", { locale: ptBR });
+          }
+        }
+        return "Data inválida";
     } catch {
         return "Data inválida"
     }

@@ -18,19 +18,19 @@ function ServiceOrdersContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
-  // Fetch clients once
-  useEffect(() => {
-    if (!firestore) return;
-    const fetchClients = async () => {
-      setClientsLoading(true);
-      const clientsRef = collection(firestore, 'clients');
-      const clientSnapshot = await getDocs(clientsRef);
-      const clientsData = clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-      setClients(clientsData);
-      setClientsLoading(false);
-    };
-    fetchClients();
+  const clientsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'clients'));
   }, [firestore]);
+
+  const { data: allClients, isLoading: clientsLoadingFromHook } = useCollection<Client>(clientsQuery);
+
+  useEffect(() => {
+    if (!clientsLoadingFromHook && allClients) {
+        setClients(allClients);
+        setClientsLoading(false);
+    }
+  }, [clientsLoadingFromHook, allClients]);
 
 
   const serviceOrdersQuery = useMemoFirebase(() => {

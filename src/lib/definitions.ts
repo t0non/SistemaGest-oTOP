@@ -7,7 +7,7 @@ export type Client = {
   phone: string;
   address: string;
   notes?: string;
-  createdAt: string | Timestamp; // ISO String, mas pode vir como Timestamp do Firestore
+  createdAt: Timestamp;
 };
 
 export const TransactionOwner = ['admin', 'pedro', 'split'] as const;
@@ -18,7 +18,7 @@ export type Transaction = {
   type: 'income' | 'expense';
   description: string;
   amount: number;
-  date: Date | Timestamp;
+  date: Timestamp;
   owner: TransactionOwner;
   clientId?: string;
   clientName?: string;
@@ -47,13 +47,13 @@ export type ServiceOrder = {
     clientName: string;
     equipment: string;
     problemDescription?: string;
-    entryDate: string | Timestamp;
+    entryDate: Timestamp;
     status: ServiceOrderStatus;
     notes?: string;
     finalValue?: number;
     clientCpf?: string; // Adicionado para impressão
     items?: ServiceOrderItem[];
-    createdAt?: string | Timestamp;
+    createdAt?: Timestamp;
 };
 
 export type Product = {
@@ -64,5 +64,5 @@ export type Product = {
   sellingPrice: number;
   supplierName?: string;
   supplierPhone?: string;
-  createdAt: string | Timestamp;
+  createdAt: Timestamp;
 };

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getMonthlyFinancialSummary, deleteTransaction } from './actions';
+import { deleteTransaction } from './actions';
 import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,9 +66,8 @@ interface FinancialSummary {
 export default function FinancePage() {
   const { isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0 });
   const [clients, setClients] = React.useState<Client[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [clientsLoading, setClientsLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
@@ -90,14 +89,14 @@ export default function FinancePage() {
 
 
   const { data: allTransactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
-  const { data: allClients, isLoading: clientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: allClients, isLoading: clientsLoadingFromHook } = useCollection<Client>(clientsQuery);
 
   React.useEffect(() => {
-    if (!clientsLoading && allClients) {
+    if (!clientsLoadingFromHook && allClients) {
         setClients(allClients);
-        setLoading(false);
+        setClientsLoading(false);
     }
-  }, [clientsLoading, allClients]);
+  }, [clientsLoadingFromHook, allClients]);
   
   const filteredTransactions = React.useMemo(() => {
     if (!allTransactions) return [];
@@ -184,21 +183,22 @@ export default function FinancePage() {
   const handleDelete = async () => {
     if (!selectedTransaction) return;
 
-    try {
-      await deleteTransaction(selectedTransaction.id)
+    const result = await deleteTransaction(selectedTransaction.id);
+    
+    if (result.success) {
       toast({
         title: 'Sucesso!',
         description: 'Transação excluída com sucesso.',
       });
-      setIsAlertOpen(false);
-      setSelectedTransaction(null);
-    } catch (error: any) {
+    } else {
       toast({
         variant: 'destructive',
         title: 'Erro!',
-        description: error.message || 'Não foi possível excluir a transação.',
+        description: result.message || 'Não foi possível excluir a transação.',
       });
     }
+    setIsAlertOpen(false);
+    setSelectedTransaction(null);
   };
 
   const formatCurrency = (value: number) =>
@@ -216,7 +216,14 @@ export default function FinancePage() {
         if (date instanceof Date) {
             return format(date, "dd/MM/yyyy", { locale: ptBR });
         }
-        return format(new Date(date as string), "dd/MM/yyyy", { locale: ptBR });
+        // Handle ISO string
+        if (typeof date === 'string') {
+          const parsedDate = parseISO(date);
+          if (!isNaN(parsedDate.getTime())) {
+            return format(parsedDate, "dd/MM/yyyy", { locale: ptBR });
+          }
+        }
+        return "Data inválida";
     } catch {
         return "Data inválida"
     }
@@ -228,7 +235,7 @@ export default function FinancePage() {
     split: { icon: Users, label: 'Dividido', color: 'text-orange-500' },
   }
   
-  const pageLoading = loading || isUserLoading || transactionsLoading;
+  const pageLoading = clientsLoading || isUserLoading || transactionsLoading;
 
   return (
     <TooltipProvider>
