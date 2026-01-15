@@ -177,9 +177,17 @@ export default function FinancePage() {
   };
 
   const handleDelete = () => {
-    if (!selectedTransaction || !firestore) return;
+    if (!selectedTransaction) return;
 
     deleteTransaction(selectedTransaction.id)
+      .then(() => {
+        toast({
+          title: 'Sucesso!',
+          description: 'Transação excluída com sucesso.',
+        });
+        setIsAlertOpen(false);
+        setSelectedTransaction(null);
+      })
       .catch((error) => {
         toast({
           variant: 'destructive',
@@ -187,14 +195,6 @@ export default function FinancePage() {
           description: error.message || 'Não foi possível excluir a transação.',
         });
       });
-
-    toast({
-      title: 'Sucesso!',
-      description: 'Transação excluída com sucesso.',
-    });
-
-    setIsAlertOpen(false);
-    setSelectedTransaction(null);
   };
 
   const formatCurrency = (value: number) =>

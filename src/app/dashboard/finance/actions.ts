@@ -141,17 +141,7 @@ export function updateTransaction(
   }
 }
 
-export function deleteTransaction(
-  id: string
-): { success: boolean; message?: string } {
-  try {
-    const docRef = doc(db, 'transactions', id);
-    deleteDocumentNonBlocking(docRef);
-    return { success: true, message: 'Transação excluída com sucesso.' };
-  } catch (e) {
-    return {
-      success: false,
-      message: 'Ocorreu um erro ao excluir a transação.',
-    };
-  }
+export async function deleteTransaction(id: string): Promise<void> {
+  const docRef = doc(db, 'transactions', id);
+  return deleteDoc(docRef);
 }
