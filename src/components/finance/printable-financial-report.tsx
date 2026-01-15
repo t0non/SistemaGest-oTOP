@@ -46,7 +46,15 @@ const formatDate = (date: unknown) => {
     }
 };
 
-const formatPeriod = (dateString: string) => format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
+const formatPeriod = (dateString: string, fallback: string) => {
+    if (!dateString) return fallback;
+    try {
+        return format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+        return fallback;
+    }
+};
+
 
 export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportProps>(
   ({ transactions, summary, startDate, endDate }, ref) => {
@@ -70,7 +78,7 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
                 <div className="text-right">
                     <h1 className="text-3xl font-bold uppercase">Relatório Financeiro</h1>
                     <p className="text-sm text-gray-600">
-                        Período de {formatPeriod(startDate)} a {formatPeriod(endDate)}
+                        Período de {formatPeriod(startDate, 'Início')} a {formatPeriod(endDate, 'Fim')}
                     </p>
                 </div>
             </header>
