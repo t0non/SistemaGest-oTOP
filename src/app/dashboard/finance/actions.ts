@@ -26,66 +26,6 @@ const transactionSchema = z.object({
   date: z.instanceof(Date),
 });
 
-export async function getMonthlyFinancialSummary(): Promise<{
-  revenue: number;
-  expenses: number;
-  profit: number;
-  productsSold: number;
-  adminProfit: number;
-  pedroProfit: number;
-}> {
-  const transactionsCol = collection(db, 'transactions');
-  const today = new Date();
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  const q = query(transactionsCol, where('date', '>=', startOfMonth), where('date', '<=', endOfMonth));
-  
-  const querySnapshot = await getDocs(q);
-  const monthlyTransactions: Transaction[] = querySnapshot.docs.map(doc => {
-    const data = doc.data();
-    // Convert Firestore Timestamp to JS Date
-    const date = (data.date as unknown as Timestamp)?.toDate ? (data.date as unknown as Timestamp).toDate() : new Date();
-    return { id: doc.id, ...data, date } as Transaction;
-  });
-
-  let revenue = 0;
-  let expenses = 0;
-  let adminProfit = 0;
-  let pedroProfit = 0;
-
-  monthlyTransactions.forEach((t) => {
-    const transactionAmount = Number(t.amount) || 0;
-    if (t.type === 'income') {
-      revenue += transactionAmount;
-      if (t.owner === 'admin') {
-        adminProfit += transactionAmount;
-      } else if (t.owner === 'pedro') {
-        pedroProfit += transactionAmount;
-      } else if (t.owner === 'split') {
-        adminProfit += transactionAmount / 2;
-        pedroProfit += transactionAmount / 2;
-      }
-    } else { // expense
-      expenses += transactionAmount;
-      if (t.owner === 'admin') {
-        adminProfit -= transactionAmount;
-      } else if (t.owner === 'pedro') {
-        pedroProfit -= transactionAmount;
-      } else if (t.owner === 'split') {
-        adminProfit -= transactionAmount / 2;
-        pedroProfit -= transactionAmount / 2;
-      }
-    }
-  });
-
-  const profit = revenue - expenses;
-  const productsSold = monthlyTransactions.filter((t) => t.type === 'income').length;
-
-  return {revenue, expenses, profit, productsSold, adminProfit, pedroProfit};
-}
-
-
 export function addTransaction(
   data: Partial<Omit<Transaction, 'id'>>
 ): { success: boolean; message?: string } {
@@ -106,10 +46,10 @@ export function addTransaction(
     addDocumentNonBlocking(collection(db, 'transactions'), dataToSave);
 
     return { success: true, message: 'Transação adicionada com sucesso.' };
-  } catch (e) {
+  } catch (e: any) {
     return {
       success: false,
-      message: 'Ocorreu um erro ao adicionar a transação.',
+      message: e.message || 'Ocorreu um erro ao adicionar a transação.',
     };
   }
 }
@@ -133,7 +73,7 @@ export function updateTransaction(
     updateDocumentNonBlocking(docRef, dataToUpdate);
 
     return { success: true, message: 'Transação atualizada com sucesso.' };
-  } catch (e) {
+  } catch (e: any) {
     return {
       success: false,
       message: 'Ocorreu um erro ao atualizar a transação.',
@@ -141,7 +81,12 @@ export function updateTransaction(
   }
 }
 
-export async function deleteTransaction(id: string): Promise<void> {
-  const docRef = doc(db, 'transactions', id);
-  return deleteDoc(docRef);
+export function deleteTransaction(id: string): { success: boolean, message?: string } {
+  try {
+    const docRef = doc(db, 'transactions', id);
+    deleteDocumentNonBlocking(docRef);
+    return { success: true, message: 'Transação excluída com sucesso.' };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Ocorreu um erro ao excluir a transação.' };
+  }
 }

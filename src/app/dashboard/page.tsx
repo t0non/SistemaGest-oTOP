@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react';
-import {getMonthlyFinancialSummary} from './finance/actions';
 import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
@@ -25,52 +24,80 @@ interface FinancialSummary {
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
   const [newClientsCount, setNewClientsCount] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
+  const [clientsLoading, setClientsLoading] = React.useState(true);
   const firestore = useFirestore();
   const { isUserLoading } = useUser();
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || isUserLoading) return null;
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     return query(collection(firestore, 'transactions'), where('date', '>=', startOfMonth), orderBy('date', 'desc'));
-  }, [firestore]);
+  }, [firestore, isUserLoading]);
 
   const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
-  const fetchData = React.useCallback(async () => {
-    if(!firestore) return;
-    setLoading(true);
+  const summary = React.useMemo<FinancialSummary>(() => {
+    if (!transactions) {
+      return { revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 };
+    }
     
-    // Fetch financial summary from Firestore
-    const summaryData = await getMonthlyFinancialSummary();
-    
-    // Fetch new clients count from Firestore
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const clientsRef = collection(firestore, 'clients');
-    const newClientsQuery = query(clientsRef, where('createdAt', '>=', firstDayOfMonth));
-    const newClientsSnapshot = await getCountFromServer(newClientsQuery);
-    const newClientsCount = newClientsSnapshot.data().count;
+    let revenue = 0;
+    let expenses = 0;
+    let adminProfit = 0;
+    let pedroProfit = 0;
 
-    setSummary(summaryData);
-    setNewClientsCount(newClientsCount);
-    setLoading(false);
-  }, [firestore]);
+    transactions.forEach((t) => {
+      const transactionAmount = Number(t.amount) || 0;
+      if (t.type === 'income') {
+        revenue += transactionAmount;
+        if (t.owner === 'admin') {
+          adminProfit += transactionAmount;
+        } else if (t.owner === 'pedro') {
+          pedroProfit += transactionAmount;
+        } else if (t.owner === 'split') {
+          adminProfit += transactionAmount / 2;
+          pedroProfit += transactionAmount / 2;
+        }
+      } else { // expense
+        expenses += transactionAmount;
+        if (t.owner === 'admin') {
+          adminProfit -= transactionAmount;
+        } else if (t.owner === 'pedro') {
+          pedroProfit -= transactionAmount;
+        } else if (t.owner === 'split') {
+          adminProfit -= transactionAmount / 2;
+          pedroProfit -= transactionAmount / 2;
+        }
+      }
+    });
+    
+    const profit = revenue - expenses;
+    const productsSold = transactions.filter((t) => t.type === 'income').length;
+
+    return { revenue, expenses, profit, productsSold, adminProfit, pedroProfit };
+
+  }, [transactions]);
+
 
   React.useEffect(() => {
-    if(!isUserLoading && firestore) {
-      fetchData();
-    }
-  }, [isUserLoading, firestore, fetchData]);
-  
-  React.useEffect(() => {
-    if(transactions) {
-        fetchData();
-    }
-  }, [transactions, fetchData]);
+    if(!firestore || isUserLoading) return;
+    
+    const fetchClientsData = async () => {
+        setClientsLoading(true);
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const clientsRef = collection(firestore, 'clients');
+        const newClientsQuery = query(clientsRef, where('createdAt', '>=', firstDayOfMonth));
+        const newClientsSnapshot = await getCountFromServer(newClientsQuery);
+        setNewClientsCount(newClientsSnapshot.data().count);
+        setClientsLoading(false);
+    };
+
+    fetchClientsData();
+    
+  }, [firestore, isUserLoading]);
 
 
   const chartData = React.useMemo(() => {
@@ -111,7 +138,9 @@ export default function DashboardPage() {
       currency: 'BRL',
     }).format(value);
 
-  if (loading || transactionsLoading || isUserLoading) {
+  const loading = transactionsLoading || isUserLoading || clientsLoading;
+
+  if (loading) {
       return (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
