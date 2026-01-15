@@ -459,7 +459,7 @@ export default function FinancePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div style={{ display: 'none' }}>
+      <div style={{ position: 'absolute', left: '-9999px' }}>
         <PrintableFinancialReport 
           ref={reportRef} 
           transactions={printData ? printData.transactions : []} 
@@ -472,3 +472,5 @@ export default function FinancePage() {
     </TooltipProvider>
   );
 }
+
+    
