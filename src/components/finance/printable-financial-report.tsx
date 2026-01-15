@@ -117,16 +117,16 @@ export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportP
               {transactions.length > 0 ? (
                 transactions.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="py-3 px-4 text-gray-600">
+                    <td className="py-3 px-4 text-gray-600 text-left">
                       {transaction.date ? formatDate(transaction.date) : '-'}
                     </td>
-                    <td className="py-3 px-4 font-medium text-gray-800">
+                    <td className="py-3 px-4 font-medium text-gray-800 text-left">
                       {transaction.description}
                       {transaction.clientName && (
                         <span className="block text-xs text-gray-500 font-normal">{transaction.clientName}</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-gray-600">
+                    <td className="py-3 px-4 text-gray-600 text-left">
                       {ownerMap[transaction.owner] || 'N/A'}
                     </td>
                     <td className="py-3 px-4 text-center">

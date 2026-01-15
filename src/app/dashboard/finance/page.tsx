@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { deleteTransaction } from './actions';
-import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users } from 'lucide-react';
+import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -54,12 +54,13 @@ import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase, useFirestore, useUser } from '@/firebase';
+import { useReactToPrint } from 'react-to-print';
+import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
 
 export default function FinancePage() {
   const { isUserLoading } = useUser();
   const firestore = useFirestore();
   const [clients, setClients] = React.useState<Client[]>([]);
-  const [clientsLoading, setClientsLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
@@ -68,6 +69,8 @@ export default function FinancePage() {
   const [endDate, setEndDate] = React.useState('');
 
   const { toast } = useToast();
+  
+  const reportRef = React.useRef<HTMLDivElement>(null);
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -79,32 +82,38 @@ export default function FinancePage() {
     return query(collection(firestore, 'clients'));
   }, [firestore]);
 
-
   const { data: allTransactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
   const { data: allClients, isLoading: clientsLoadingFromHook } = useCollection<Client>(clientsQuery);
 
   React.useEffect(() => {
     if (!clientsLoadingFromHook && allClients) {
         setClients(allClients);
-        setClientsLoading(false);
     }
   }, [clientsLoadingFromHook, allClients]);
   
-  const filteredTransactions = React.useMemo(() => {
-    if (!allTransactions) return [];
+  const { filteredTransactions, summary } = React.useMemo(() => {
+    if (!allTransactions) {
+      return { filteredTransactions: [], summary: { revenue: 0, expenses: 0, profit: 0 } };
+    }
     
-    if (!startDate && !endDate) {
-        return allTransactions;
+    let filtered = allTransactions;
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate + 'T00:00:00') : new Date('1970-01-01');
+      const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+      filtered = allTransactions.filter(t => {
+        if (!t.date) return false;
+        const transactionDate = (t.date as unknown as Timestamp).toDate();
+        return transactionDate >= start && transactionDate <= end;
+      });
     }
 
-    const start = startDate ? new Date(startDate + 'T00:00:00') : new Date('1970-01-01');
-    const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
-    
-    return allTransactions.filter(t => {
-      if (!t.date) return false;
-      const transactionDate = (t.date as unknown as Timestamp).toDate();
-      return transactionDate >= start && transactionDate <= end;
-    });
+    const revenue = filtered.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const expenses = filtered.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+
+    return {
+      filteredTransactions: filtered,
+      summary: { revenue, expenses, profit: revenue - expenses }
+    };
   }, [allTransactions, startDate, endDate]);
 
   const chartData = React.useMemo(() => {
@@ -138,6 +147,11 @@ export default function FinancePage() {
     });
   }, [filteredTransactions]);
 
+  const handlePrint = useReactToPrint({
+    content: () => reportRef.current,
+    documentTitle: `Relatorio-Financeiro-${format(new Date(), 'dd-MM-yyyy')}`,
+  });
+
   const handleFormSuccess = () => {
     setIsFormOpen(false);
     setSelectedTransaction(null);
@@ -160,9 +174,7 @@ export default function FinancePage() {
 
   const handleDelete = async () => {
     if (!selectedTransaction) return;
-
     const result = await deleteTransaction(selectedTransaction.id);
-    
     if (result.success) {
       toast({
         title: 'Sucesso!',
@@ -212,7 +224,7 @@ export default function FinancePage() {
     split: { icon: Users, label: 'Dividido', color: 'text-orange-500' },
   }
   
-  const pageLoading = clientsLoading || isUserLoading || transactionsLoading;
+  const pageLoading = clientsLoadingFromHook || isUserLoading || transactionsLoading;
 
   return (
     <TooltipProvider>
@@ -246,11 +258,15 @@ export default function FinancePage() {
                 />
               </div>
             </div>
+            <Button onClick={handlePrint} variant="outline" className="w-full sm:w-auto">
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimir
+            </Button>
+            <Button onClick={openFormForNew} className="w-full sm:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nova Movimentação
+            </Button>
           </div>
-          <Button onClick={openFormForNew} className="w-full sm:w-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova Movimentação
-          </Button>
         </div>
 
         {pageLoading ? (
@@ -398,6 +414,16 @@ export default function FinancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
+        <PrintableFinancialReport
+            ref={reportRef}
+            transactions={filteredTransactions}
+            summary={summary}
+            startDate={startDate}
+            endDate={endDate}
+        />
+      </div>
     </TooltipProvider>
   );
 }
