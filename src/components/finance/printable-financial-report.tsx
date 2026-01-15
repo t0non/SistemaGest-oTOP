@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { Transaction } from '@/lib/definitions';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,7 +33,6 @@ const formatDate = (date: unknown) => {
         if (date instanceof Date) {
             return format(date, "dd/MM/yyyy", { locale: ptBR });
         }
-        // Handle ISO string
         if (typeof date === 'string') {
           const parsedDate = parseISO(date);
           if (!isNaN(parsedDate.getTime())) {
@@ -46,114 +45,121 @@ const formatDate = (date: unknown) => {
     }
 };
 
-const formatPeriod = (dateString: string, fallback: string) => {
-    if (!dateString) return fallback;
-    try {
-        return format(parseISO(dateString), "dd/MM/yyyy", { locale: ptBR });
-    } catch {
-        return fallback;
-    }
+const formatPeriod = (start: string, end: string) => {
+    if (!start && !end) return 'Todo o Período';
+    const formattedStart = start ? format(parseISO(start), 'dd/MM/yyyy', { locale: ptBR }) : 'Início';
+    const formattedEnd = end ? format(parseISO(end), 'dd/MM/yyyy', { locale: ptBR }) : 'Fim';
+    
+    if (start && !end) return `A partir de ${formattedStart}`;
+    if (!start && end) return `Até ${formattedEnd}`;
+    if (start && end) return `${formattedStart} - ${formattedEnd}`;
+    return 'Período inválido';
 };
 
 
 export const PrintableFinancialReport = React.forwardRef<HTMLDivElement, ReportProps>(
   ({ transactions, summary, startDate, endDate }, ref) => {
-    const [generatedDate, setGeneratedDate] = useState('');
-
-    useEffect(() => {
-      setGeneratedDate(
-        format(new Date(), "'dd 'de' MMMM 'de' yyyy', às ' HH:mm", { locale: ptBR })
-      );
-    }, []);
+    
+    const ownerMap = {
+      admin: 'Eduardo',
+      pedro: 'Pedro',
+      split: 'Dividido',
+    };
     
     return (
-      <div ref={ref} className="bg-white text-black p-10 font-sans">
-        <div className="w-[210mm] min-h-[297mm] mx-auto">
-            {/* Cabeçalho */}
-            <header className="flex justify-between items-center pb-4 border-b-2 border-gray-800">
-                <div className="w-48">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" className="w-full h-auto" />
-                </div>
-                <div className="text-right">
-                    <h1 className="text-3xl font-bold uppercase">Relatório Financeiro</h1>
-                    <p className="text-sm text-gray-600">
-                        Período de {formatPeriod(startDate, 'Início')} a {formatPeriod(endDate, 'Fim')}
-                    </p>
-                </div>
-            </header>
+      <div ref={ref} className="p-8 bg-white text-black print:p-0 w-full max-w-4xl mx-auto">
+        {/* --- CABEÇALHO --- */}
+        <div className="mb-8 border-b pb-4 flex justify-between items-end">
+            <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://files.catbox.moe/rsv9g4.png" alt="TechStore BH Logo" className="w-48 h-auto" />
+                <h1 className="text-2xl font-bold uppercase tracking-wide text-gray-800 mt-4">Relatório Financeiro</h1>
+            </div>
+            <div className="text-right">
+                <p className="text-sm text-gray-500">Período:</p>
+                <p className="font-medium">{formatPeriod(startDate, endDate)}</p>
+                <p className="text-sm text-gray-500 mt-2">Gerado em:</p>
+                <p className="font-medium">{format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+            </div>
+        </div>
 
-            {/* Resumo */}
-            <section className="my-8">
-                <h2 className="text-xl font-semibold mb-4 border-b border-gray-300 pb-2">Resumo do Período</h2>
-                <div className="grid grid-cols-3 gap-6 text-center">
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <p className="text-sm text-green-800 font-semibold">Total de Entradas</p>
-                        <p className="text-2xl font-bold text-green-700">{formatCurrency(summary.revenue)}</p>
-                    </div>
-                    <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                        <p className="text-sm text-red-800 font-semibold">Total de Saídas</p>
-                        <p className="text-2xl font-bold text-red-700">{formatCurrency(summary.expenses)}</p>
-                    </div>
-                     <div className={cn("p-4 rounded-lg border", summary.profit >= 0 ? "bg-blue-50 border-blue-200" : "bg-red-50 border-red-200")}>
-                        <p className={cn("text-sm font-semibold", summary.profit >= 0 ? "text-blue-800" : "text-red-800")}>Saldo Líquido</p>
-                        <p className={cn("text-2xl font-bold", summary.profit >= 0 ? "text-blue-700" : "text-red-700")}>{formatCurrency(summary.profit)}</p>
-                    </div>
-                </div>
-            </section>
+        {/* --- RESUMO FINANCEIRO (CARDS) --- */}
+        <div className="grid grid-cols-3 gap-6 mb-8">
+          <div className="p-4 border rounded-lg bg-green-50">
+            <p className="text-xs uppercase text-green-800 font-semibold mb-1">Total Entradas</p>
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(summary.revenue)}</p>
+          </div>
+          <div className="p-4 border rounded-lg bg-red-50">
+            <p className="text-xs uppercase text-red-800 font-semibold mb-1">Total Saídas</p>
+            <p className="text-2xl font-bold text-red-700">{formatCurrency(summary.expenses)}</p>
+          </div>
+          <div className={`p-4 border rounded-lg ${summary.profit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+            <p className={`text-xs uppercase font-semibold mb-1 ${summary.profit >= 0 ? 'text-blue-800' : 'text-orange-800'}`}>Saldo Líquido</p>
+            <p className={`text-2xl font-bold ${summary.profit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+              {formatCurrency(summary.profit)}
+            </p>
+          </div>
+        </div>
 
-            {/* Tabela de Transações */}
-            <section>
-                <h2 className="text-xl font-semibold mb-4 border-b border-gray-300 pb-2">Transações Detalhadas</h2>
-                <table className="w-full text-sm border-collapse">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="border p-2 text-left w-24">Data</th>
-                            <th className="border p-2 text-left">Descrição</th>
-                            <th className="border p-2 text-left w-28">Tipo</th>
-                            <th className="border p-2 text-right w-40">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transactions.length > 0 ? transactions.map(t => (
-                            <tr key={t.id} className="even:bg-gray-50">
-                                <td className="border p-2">{formatDate(t.date)}</td>
-                                <td className="border p-2">{t.description}</td>
-                                <td className={cn("border p-2 font-medium", t.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                                    {t.type === 'income' ? 'Entrada' : 'Saída'}
-                                </td>
-                                <td className={cn("border p-2 text-right font-mono", t.type === 'income' ? 'text-green-700' : 'text-red-700')}>
-                                    {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan={4} className="text-center p-8 text-gray-500">Nenhuma transação encontrada no período.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                    <tfoot>
-                        <tr className="font-bold bg-gray-100">
-                           <td colSpan={3} className="border p-2 text-right">Total Entradas:</td>
-                           <td className="border p-2 text-right font-mono text-green-700">{formatCurrency(summary.revenue)}</td>
-                        </tr>
-                         <tr className="font-bold bg-gray-100">
-                           <td colSpan={3} className="border p-2 text-right">Total Saídas:</td>
-                           <td className="border p-2 text-right font-mono text-red-700">{formatCurrency(summary.expenses)}</td>
-                        </tr>
-                         <tr className="font-bold bg-gray-200 text-base">
-                           <td colSpan={3} className="border p-2 text-right">Saldo Líquido Final:</td>
-                           <td className={cn("border p-2 text-right font-mono", summary.profit >= 0 ? "text-blue-700" : "text-red-700")}>{formatCurrency(summary.profit)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </section>
-            
-            {/* Rodapé */}
-            <footer className="text-center text-xs text-gray-500 pt-8 mt-auto">
-                {generatedDate && <p>Relatório gerado em {generatedDate}</p>}
-                <p>TechStore Manager BH</p>
-            </footer>
+        {/* --- TABELA DE TRANSAÇÕES --- */}
+        <div className="overflow-hidden border rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b">
+              <tr>
+                <th className="py-3 px-4 text-left font-semibold text-gray-700 w-24">Data</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-700">Descrição</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-700 w-28">Responsável</th>
+                <th className="py-3 px-4 text-center font-semibold text-gray-700 w-24">Tipo</th>
+                <th className="py-3 px-4 text-right font-semibold text-gray-700 w-32">Valor</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {transactions.length > 0 ? (
+                transactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50">
+                    <td className="py-3 px-4 text-gray-600">
+                      {transaction.date ? formatDate(transaction.date) : '-'}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-gray-800">
+                      {transaction.description}
+                      {transaction.clientName && (
+                        <span className="block text-xs text-gray-500 font-normal">{transaction.clientName}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600">
+                      {ownerMap[transaction.owner] || 'N/A'}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        transaction.type === 'income' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {transaction.type === 'income' ? 'Entrada' : 'Saída'}
+                      </span>
+                    </td>
+                    <td className={`py-3 px-4 text-right font-mono font-medium ${
+                      transaction.type === 'income' ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {transaction.type === 'expense' ? '-' : ''}
+                      {formatCurrency(transaction.amount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-gray-500 italic">
+                    Nenhuma transação encontrada neste período.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* --- RODAPÉ --- */}
+        <div className="mt-8 pt-4 border-t text-center text-xs text-gray-400">
+          <p>TechStore Manager BH</p>
         </div>
       </div>
     );
