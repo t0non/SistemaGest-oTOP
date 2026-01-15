@@ -3,6 +3,7 @@
 import React, { forwardRef } from 'react';
 import type { ServiceOrder } from '@/lib/definitions';
 import { formatCPF } from '@/lib/formatters';
+import { Timestamp } from 'firebase/firestore';
 
 interface PrintableQuoteProps {
     data: ServiceOrder;
@@ -12,7 +13,9 @@ export const PrintableQuote = forwardRef<HTMLDivElement, PrintableQuoteProps>(
   ({ data = {} as ServiceOrder }, ref) => {
     const id = data.id || "0000";
     const clientName = data.clientName || "Consumidor Final";
-    const date = data.entryDate ? new Date(data.entryDate).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    const date = data.entryDate 
+      ? (data.entryDate as Timestamp).toDate().toLocaleDateString('pt-BR') 
+      : new Date().toLocaleDateString('pt-BR');
     
     const items = data.items || [{
         id: 'default',

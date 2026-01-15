@@ -24,11 +24,12 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addServiceOrder, updateServiceOrder } from '@/app/dashboard/service-orders/actions';
-import type { Client, ServiceOrder, ServiceOrderItem } from '@/lib/definitions';
+import type { Client, ServiceOrder } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
-import { useEffect, useState } from 'react';
-import { formatCurrency, unformatCurrency } from '@/lib/formatters';
+import { useState } from 'react';
+import { formatCurrency } from '@/lib/formatters';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
 
 const serviceOrderItemSchema = z.object({
   id: z.string(),
@@ -66,7 +67,7 @@ export function ServiceOrderForm({
 
   const getInitialDate = () => {
     if (serviceOrder?.entryDate) {
-        const d = new Date(serviceOrder.entryDate);
+        const d = (serviceOrder.entryDate as unknown as Timestamp)?.toDate ? (serviceOrder.entryDate as unknown as Timestamp).toDate() : new Date(serviceOrder.entryDate);
         if (!isNaN(d.getTime())) {
             return d.toISOString().split('T')[0];
         }
@@ -83,7 +84,7 @@ export function ServiceOrderForm({
       status: serviceOrder?.status || 'Em Análise',
       notes: serviceOrder?.notes || '',
       entryDate: getInitialDate(),
-      items: serviceOrder?.items || [],
+      items: serviceOrder?.items || [{ id: `item-${Date.now()}`, description: '', quantity: 1, unitPrice: 0 }],
     },
   });
 
@@ -109,12 +110,12 @@ export function ServiceOrderForm({
         return;
     }
     
-    const entryDate = new Date(values.entryDate + 'T12:00:00Z').toISOString();
+    const entryDate = new Date(values.entryDate + 'T12:00:00Z');
 
     const dataToSave = {
         ...values,
         clientName: selectedClient.name,
-        entryDate,
+        entryDate: Timestamp.fromDate(entryDate),
     };
     
     const result = serviceOrder?.id

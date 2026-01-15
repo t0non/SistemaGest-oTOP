@@ -6,13 +6,11 @@ import StatCard from '@/components/dashboard/stat-card';
 import {OverviewChart} from '@/components/dashboard/overview-chart';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {ArrowUp, ArrowDown, UserCheck, Package, Users} from 'lucide-react';
-import { getClients } from './clients/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, Timestamp, where } from 'firebase/firestore';
-import { useMemoFirebase } from '@/firebase';
-import { db } from '@/lib/firebase';
+import { collection, query, orderBy, Timestamp, where, getCountFromServer } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Transaction } from '@/lib/definitions';
 import { TrendingUp } from 'lucide-react';
 
@@ -30,50 +28,48 @@ export default function DashboardPage() {
   const [summary, setSummary] = React.useState<FinancialSummary>({ revenue: 0, expenses: 0, profit: 0, productsSold: 0, adminProfit: 0, pedroProfit: 0 });
   const [newClientsCount, setNewClientsCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
 
   const transactionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    return query(collection(db, 'transactions'), where('date', '>=', startOfMonth), orderBy('date', 'desc'));
-  }, []);
+    return query(collection(firestore, 'transactions'), where('date', '>=', startOfMonth), orderBy('date', 'desc'));
+  }, [firestore]);
 
   const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
   const fetchData = React.useCallback(async () => {
+    if(!firestore) return;
     setLoading(true);
+    
+    // Fetch financial summary from Firestore
     const summaryData = await getMonthlyFinancialSummary();
     
-    const allClients = getClients('');
+    // Fetch new clients count from Firestore
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const newClients = allClients.filter(c => new Date(c.createdAt) >= firstDayOfMonth);
+    const clientsRef = collection(firestore, 'clients');
+    const newClientsQuery = query(clientsRef, where('createdAt', '>=', firstDayOfMonth));
+    const newClientsSnapshot = await getCountFromServer(newClientsQuery);
+    const newClientsCount = newClientsSnapshot.data().count;
 
     setSummary(summaryData);
-    setNewClientsCount(newClients.length);
+    setNewClientsCount(newClientsCount);
     setLoading(false);
-  // The 'transactions' dependency is intentionally omitted to avoid re-fetches from getMonthlyFinancialSummary.
-  // The summary is designed to be a monthly snapshot, while the chart is real-time.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [firestore]);
 
   React.useEffect(() => {
-    fetchData();
-
-    // This listener is for localStorage changes, which is being phased out.
-    // It's kept for now to ensure modules not yet migrated still trigger updates.
-    const handleStorageChange = () => fetchData();
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('local-storage-changed', handleStorageChange);
-    };
-  }, [fetchData]);
+    if(!isUserLoading && firestore) {
+      fetchData();
+    }
+  }, [isUserLoading, firestore, fetchData]);
   
   React.useEffect(() => {
-    // We can also trigger a refetch of the summary when firestore transactions change.
-    fetchData();
+    if(transactions) {
+        fetchData();
+    }
   }, [transactions, fetchData]);
 
 
@@ -115,7 +111,7 @@ export default function DashboardPage() {
       currency: 'BRL',
     }).format(value);
 
-  if (loading || transactionsLoading) {
+  if (loading || transactionsLoading || isUserLoading) {
       return (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

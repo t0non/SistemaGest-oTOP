@@ -1,50 +1,47 @@
-
 'use client';
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getProducts } from './actions';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/lib/definitions';
 import { ProductList } from '@/components/products/product-list';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 function ProductsPageContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('query') || '';
-  const [products, setProducts] = React.useState<Product[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryParam = searchParams.get('query') || '';
+  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
 
-  const fetchProducts = React.useCallback(() => {
-    setLoading(true);
-    const productData = getProducts(query);
-    setProducts(productData);
-    setLoading(false);
-  }, [query]);
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
 
+  const { data: allProducts, isLoading: productsLoading } = useCollection<Product>(productsQuery);
 
-  // Listen for storage changes to update UI
-  React.useEffect(() => {
-    fetchProducts();
-    
-    const handleStorageChange = () => {
-      fetchProducts();
-    };
+  const filteredProducts = React.useMemo(() => {
+    if (!allProducts) return [];
+    if (!queryParam) return allProducts;
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('local-storage-changed', handleStorageChange);
-    };
-  }, [query, fetchProducts]);
-  
-  if (loading) {
+    const lowercasedQuery = queryParam.toLowerCase();
+    return allProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(lowercasedQuery) ||
+        product.supplierName?.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [allProducts, queryParam]);
+
+  const isLoading = productsLoading || isUserLoading;
+
+  if (isLoading) {
     return <Skeleton className="h-96 w-full" />;
   }
 
-  return <ProductList initialProducts={products} />;
+  return <ProductList initialProducts={filteredProducts} />;
 }
 
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -48,7 +47,6 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
 
 export function ProductList({initialProducts}: {initialProducts: Product[]}) {
-  const [products, setProducts] = React.useState(initialProducts);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
@@ -56,11 +54,6 @@ export function ProductList({initialProducts}: {initialProducts: Product[]}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const {replace} = useRouter();
-
-  React.useEffect(() => {
-    setProducts(initialProducts);
-  }, [initialProducts]);
-
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -97,8 +90,6 @@ export function ProductList({initialProducts}: {initialProducts: Product[]}) {
         title: 'Sucesso!',
         description: 'Produto excluído com sucesso.',
       });
-      setProducts(products.filter(p => p.id !== selectedProduct.id));
-      window.dispatchEvent(new Event('local-storage-changed'));
     } else {
       toast({
         variant: 'destructive',
@@ -112,6 +103,7 @@ export function ProductList({initialProducts}: {initialProducts: Product[]}) {
   
   const handleFormSuccess = () => {
       setIsFormOpen(false);
+      setSelectedProduct(null);
   }
 
   return (
@@ -142,8 +134,8 @@ export function ProductList({initialProducts}: {initialProducts: Product[]}) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.length > 0 ? (
-              products.map((product) => (
+            {initialProducts && initialProducts.length > 0 ? (
+              initialProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">

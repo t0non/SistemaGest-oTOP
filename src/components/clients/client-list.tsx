@@ -40,12 +40,11 @@ import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 
 import type {Client} from '@/lib/definitions';
 import {ClientForm} from './client-form';
-import {deleteClient, getClients} from '@/app/dashboard/clients/actions';
+import {deleteClient} from '@/app/dashboard/clients/actions';
 import {MoreHorizontal, PlusCircle, Trash2, Edit, MessageSquare} from 'lucide-react';
 import { formatCPF, formatPhone } from '@/lib/formatters';
 
 export function ClientList({initialClients}: {initialClients: Client[]}) {
-  const [clients, setClients] = React.useState(initialClients);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [selectedClient, setSelectedClient] = React.useState<Client | null>(
@@ -55,12 +54,6 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const {replace} = useRouter();
-
-  // Update state if initialClients prop changes
-  React.useEffect(() => {
-    setClients(initialClients);
-  }, [initialClients]);
-
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
@@ -102,10 +95,6 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
         title: 'Sucesso!',
         description: 'Cliente excluído com sucesso.',
       });
-      // Manually update the state to reflect deletion
-      setClients(clients.filter(c => c.id !== selectedClient.id));
-      // Notify other components that storage has changed
-      window.dispatchEvent(new Event('local-storage-changed'));
     } else {
       toast({
         variant: 'destructive',
@@ -119,8 +108,7 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
   
   const handleFormSuccess = () => {
       setIsFormOpen(false);
-      // The parent component (`ClientsPage`) will handle refetching 
-      // because it listens to the 'local-storage-changed' event.
+      setSelectedClient(null);
   }
 
   return (
@@ -150,17 +138,17 @@ export function ClientList({initialClients}: {initialClients: Client[]}) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clients.length > 0 ? (
-              clients.map((client) => (
+            {initialClients && initialClients.length > 0 ? (
+              initialClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
                         <span>{client.name}</span>
-                        <span className="text-xs text-muted-foreground md:hidden">{formatCPF(client.cpf)}</span>
+                        <span className="text-xs text-muted-foreground md:hidden">{client.cpf ? formatCPF(client.cpf) : ''}</span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {formatCPF(client.cpf)}
+                    {client.cpf ? formatCPF(client.cpf) : ''}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Button variant="ghost" size="sm" onClick={() => openWhatsApp(client.phone)}>

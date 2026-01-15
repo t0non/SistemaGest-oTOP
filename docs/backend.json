@@ -1,97 +1,82 @@
 {
   "entities": {
     "Client": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
       "type": "object",
       "description": "Represents a client of the tech store.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Client entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Full name of the client."
-        },
-        "cpf": {
-          "type": "string",
-          "description": "CPF (Cadastro de Pessoas Físicas) of the client."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Phone number/WhatsApp of the client."
-        },
-        "address": {
-          "type": "string",
-          "description": "Full address of the client."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Additional notes about the client."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the client was created.",
-          "format": "date-time"
-        }
+        "name": { "type": "string", "description": "Full name of the client." },
+        "cpf": { "type": "string", "description": "CPF (Cadastro de Pessoas Físicas) of the client." },
+        "phone": { "type": "string", "description": "Phone number/WhatsApp of the client." },
+        "address": { "type": "string", "description": "Full address of the client." },
+        "notes": { "type": "string", "description": "Additional notes about the client." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the client was created." }
       },
-      "required": [
-        "id",
-        "name",
-        "cpf",
-        "phone",
-        "address"
-      ]
+      "required": ["name", "phone"]
     },
     "Transaction": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
       "description": "Represents a financial transaction (income or expense).",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Transaction entity."
-        },
-        "type": {
-          "type": "string",
-          "description": "Type of transaction (income or expense).",
-          "format": "income|expense"
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the transaction."
-        },
-        "amount": {
-          "type": "number",
-          "description": "Amount of the transaction."
-        },
-        "date": {
-          "type": "string",
-          "description": "Date of the transaction.",
-          "format": "date-time"
-        },
-        "clientId": {
-          "type": "string",
-          "description": "Reference to Client. (Relationship: Client 1:N Transaction)",
-          "format": "uuid"
-        }
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Type of transaction." },
+        "description": { "type": "string", "description": "Description of the transaction." },
+        "amount": { "type": "number", "description": "Amount of the transaction." },
+        "date": { "type": "string", "format": "date-time", "description": "Date of the transaction." },
+        "owner": { "type": "string", "enum": ["admin", "pedro", "split"], "description": "Owner of the transaction for profit splitting." },
+        "clientId": { "type": "string", "description": "Reference to a client document." },
+        "clientName": { "type": "string", "description": "Denormalized client name for quick display." }
       },
-      "required": [
-        "id",
-        "type",
-        "description",
-        "amount",
-        "date"
-      ]
+      "required": ["type", "description", "amount", "date", "owner"]
+    },
+    "Product": {
+      "title": "Product",
+      "type": "object",
+      "description": "Represents an item in the store's inventory.",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the product." },
+        "quantity": { "type": "number", "description": "Quantity in stock." },
+        "costPrice": { "type": "number", "description": "The price at which the product was purchased." },
+        "sellingPrice": { "type": "number", "description": "The price at which the product is sold." },
+        "supplierName": { "type": "string", "description": "Name of the supplier." },
+        "supplierPhone": { "type": "string", "description": "Phone number of the supplier." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp indicating when the product was added." }
+      },
+      "required": ["name", "quantity", "costPrice", "sellingPrice"]
+    },
+    "ServiceOrder": {
+      "title": "ServiceOrder",
+      "type": "object",
+      "description": "Represents a service order for a client's equipment.",
+      "properties": {
+        "clientId": { "type": "string", "description": "Reference to the client document." },
+        "clientName": { "type": "string", "description": "Denormalized client name." },
+        "equipment": { "type": "string", "description": "Description of the equipment being serviced." },
+        "problemDescription": { "type": "string", "description": "The problem reported by the client." },
+        "entryDate": { "type": "string", "format": "date-time", "description": "Date the equipment was received." },
+        "status": { "type": "string", "enum": ["Em Análise", "Aguardando Aprovação", "Em Manutenção", "Pronto para Retirada", "Finalizado/Entregue"], "description": "Current status of the service order." },
+        "notes": { "type": "string", "description": "Internal notes about the service." },
+        "items": {
+          "type": "array",
+          "description": "List of services and parts used.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "quantity": { "type": "number" },
+              "unitPrice": { "type": "number" }
+            },
+            "required": ["description", "quantity", "unitPrice"]
+          }
+        },
+        "finalValue": { "type": "number", "description": "Total value of the service order." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp for creation." }
+      },
+      "required": ["clientId", "clientName", "equipment", "entryDate", "status", "items", "finalValue"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "structure": [
@@ -99,35 +84,39 @@
         "path": "clients/{clientId}",
         "definition": {
           "entityName": "Client",
-          "schema": {
-            "$ref": "#/backend/entities/Client"
-          },
-          "description": "Stores client data including name, CPF, phone, address, and notes. Supports client CRUD operations.",
-          "params": [
-            {
-              "name": "clientId",
-              "description": "Unique identifier for the client."
-            }
-          ]
+          "schema": { "$ref": "#/entities/Client" },
+          "description": "Stores all client information.",
+          "params": [{ "name": "clientId", "description": "Unique identifier for the client." }]
         }
       },
       {
         "path": "transactions/{transactionId}",
         "definition": {
           "entityName": "Transaction",
-          "schema": {
-            "$ref": "#/backend/entities/Transaction"
-          },
-          "description": "Stores financial transaction data (income/expense), linking them to clients where applicable. Supports financial record keeping and dashboard calculations. No client information is denormalized.",
-          "params": [
-            {
-              "name": "transactionId",
-              "description": "Unique identifier for the transaction."
-            }
-          ]
+          "schema": { "$ref": "#/entities/Transaction" },
+          "description": "Stores all financial transactions (income/expense).",
+          "params": [{ "name": "transactionId", "description": "Unique identifier for the transaction." }]
+        }
+      },
+      {
+        "path": "products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": { "$ref": "#/entities/Product" },
+          "description": "Stores all inventory products.",
+          "params": [{ "name": "productId", "description": "Unique identifier for the product." }]
+        }
+      },
+      {
+        "path": "serviceOrders/{serviceOrderId}",
+        "definition": {
+          "entityName": "ServiceOrder",
+          "schema": { "$ref": "#/entities/ServiceOrder" },
+          "description": "Stores all service orders.",
+          "params": [{ "name": "serviceOrderId", "description": "Unique identifier for the service order." }]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage clients and financial transactions for the TechStore Manager BH application. It prioritizes simplicity and security.  Clients are stored in a top-level `clients` collection, while transactions are stored in a `transactions` collection. To enable authorization independence, the `transactions` documents do NOT denormalize any client information since any user should be able to `list` all transactions. The security rules will authorize transaction writes to authenticated users only, and allow reads for only authenticated users. This approach avoids complex `get()` calls in security rules and ensures atomic operations are possible. Segregation of client and transaction data into separate collections ensures a homogeneous security posture, as all documents within each collection share similar access requirements. This setup supports the core application features including client CRUD, financial records, and dashboard overviews, while maintaining a secure and scalable database structure."
+    "reasoning": "The Firestore structure is designed for simplicity and scalability. Each core entity (Client, Transaction, Product, ServiceOrder) has its own top-level collection. This approach ensures that queries are simple and security rules can be applied granularly to each data type. Denormalization is used sparingly (e.g., `clientName` in transactions and service orders) to simplify read operations without adding significant write complexity. All operations are secured by requiring an authenticated user, which aligns with the application's internal management tool nature. This structure supports all current features while being flexible enough for future expansion."
   }
 }

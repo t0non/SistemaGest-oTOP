@@ -1,47 +1,66 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getServiceOrders } from './actions';
 import { ServiceOrderList } from '@/components/service-orders/service-order-list';
-import { getClients } from '../clients/actions';
 import type { Client, ServiceOrder } from '@/lib/definitions';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 function ServiceOrdersContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('query') || '';
-  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
+  const queryParam = searchParams.get('query') || '';
+  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
+
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clientsLoading, setClientsLoading] = useState(true);
 
-  const fetchData = (query: string) => {
-      setLoading(true);
-      const soData = getServiceOrders(query);
-      const clientData = getClients('');
-      setServiceOrders(soData);
-      setClients(clientData);
-      setLoading(false);
-  }
-
+  // Fetch clients once
   useEffect(() => {
-    fetchData(query);
-
-    const handleStorageChange = () => fetchData(query);
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
-
-    return () => {
-        window.removeEventListener('storage', handleStorageChange);
-        window.removeEventListener('local-storage-changed', handleStorageChange);
+    if (!firestore) return;
+    const fetchClients = async () => {
+      setClientsLoading(true);
+      const clientsRef = collection(firestore, 'clients');
+      const clientSnapshot = await getDocs(clientsRef);
+      const clientsData = clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+      setClients(clientsData);
+      setClientsLoading(false);
     };
-  }, [query]);
+    fetchClients();
+  }, [firestore]);
 
-  if (loading) {
+
+  const serviceOrdersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'serviceOrders'), orderBy('entryDate', 'desc'));
+  }, [firestore]);
+
+  const { data: allServiceOrders, isLoading: soLoading } = useCollection<ServiceOrder>(serviceOrdersQuery);
+
+  const filteredServiceOrders = useMemo(() => {
+    if (!allServiceOrders) return [];
+    if (!queryParam) return allServiceOrders;
+
+    const lowercasedQuery = queryParam.toLowerCase();
+    return allServiceOrders.filter(
+      (os) =>
+        os.clientName.toLowerCase().includes(lowercasedQuery) ||
+        os.equipment.toLowerCase().includes(lowercasedQuery) ||
+        (os.id && os.id.toLowerCase().includes(lowercasedQuery))
+    );
+  }, [allServiceOrders, queryParam]);
+
+
+  const isLoading = soLoading || isUserLoading || clientsLoading;
+
+  if (isLoading) {
     return <Skeleton className="h-96 w-full" />;
   }
 
-  return <ServiceOrderList initialServiceOrders={serviceOrders} clients={clients} />;
+  return <ServiceOrderList initialServiceOrders={filteredServiceOrders} clients={clients} />;
 }
 
 export default function ServiceOrdersPage() {

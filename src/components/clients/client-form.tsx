@@ -61,23 +61,15 @@ export function ClientForm({client, onSuccess}: ClientFormProps) {
   async function onSubmit(values: ClientFormValues) {
     setIsSubmitting(true);
 
-    const dataToSave = {
-      ...values,
-      cpf: values.cpf?.replace(/\D/g, '') || '',
-      phone: values.phone.replace(/\D/g, ''),
-    };
-
     const result = client
-      ? updateClient(client.id, dataToSave)
-      : addClient(dataToSave);
+      ? updateClient(client.id, values)
+      : addClient(values);
 
     if (result.success) {
       toast({
         title: 'Sucesso!',
         description: `Cliente ${client ? 'atualizado' : 'adicionado'} com sucesso.`,
       });
-      // Notify other components that storage has changed
-      window.dispatchEvent(new Event('local-storage-changed'));
       onSuccess();
     } else {
       toast({

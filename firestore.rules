@@ -1,95 +1,36 @@
-/**
- * @fileoverview Firestore Security Rules for the TechStore Manager BH application.
- *
- * @description
- * This ruleset establishes a clear security boundary for the application's data,
- * primarily managing clients and their associated financial transactions.
- *
- * Core Philosophy:
- * The security model is based on a simple, shared-access principle for all authenticated users.
- * Any user who is signed in (including via anonymous authentication) is considered a trusted
- * operator with full permissions to read and write all data within the database. This is
- * suitable for single-user applications or internal tools where all users have the same
- * level of administrative access. Unauthenticated access is completely blocked.
- *
- * Data Structure:
- * The data is organized into two distinct, top-level collections:
- * 1. /clients: Stores all client information.
- * 2. /transactions: Stores all financial records.
- * This flat structure simplifies rule logic, as there are no user-specific subcollections
- * or complex hierarchical relationships to secure.
- *
- * Key Security Decisions:
- * - All Access Requires Authentication: No data can be read or written by users who are
- *   not signed in. The `isSignedIn()` check is the foundation of this entire ruleset.
- * - No Data Ownership: The concept of document ownership is intentionally omitted. Any
- *   authenticated user can create, read, update, or delete any client or transaction.
- *   This supports a fully collaborative or single-administrator usage model.
- * - No Data Validation: In line with a rapid prototyping philosophy, these rules do not
- *   enforce the specific shape or data types of documents. Authorization is the sole focus.
- *
- * Denormalization for Authorization:
- * This ruleset does not require denormalization for authorization because the security
- * model is not based on per-document ownership. Access is granted globally to all
- * authenticated users, eliminating the need for `get()` calls to check related documents.
- *
- * Structural Segregation:
- * The clear separation of `clients` and `transactions` into their own top-level
- * collections allows for uniform and simple security rules to be applied to each
- * data type.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ------------------------------------------------------------------------
-    // Helper Functions
-    // ------------------------------------------------------------------------
-
-    /**
-     * @description Checks if the user is authenticated.
-     * @returns {boolean} True if the user is signed in, false otherwise.
-     */
+    // Helper function to check if a user is signed in.
+    // Supports anonymous authentication.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // ------------------------------------------------------------------------
-    // Collection Rules
-    // ------------------------------------------------------------------------
-
-    /**
-     * @description Rules for the 'clients' collection.
-     * Grants full read and write access to any authenticated user. This allows
-     * any signed-in operator to manage the complete client list.
-     * @path /clients/{clientId}
-     * @allow (create) An authenticated user can create a new client document.
-     * @deny (get) An unauthenticated user cannot read any client data.
-     * @principle Enforces a shared-access model where all authenticated users are trusted operators.
-     */
+    // Rules for the 'clients' collection.
+    // Any authenticated user can manage the client list.
     match /clients/{clientId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Rules for the 'transactions' collection.
-     * Grants full read and write access to any authenticated user. This allows
-     * any signed-in operator to record or modify any financial transaction.
-     * @path /transactions/{transactionId}
-     * @allow (create) An authenticated user can create a new transaction.
-     * @deny (delete) An unauthenticated user cannot delete a transaction.
-     * @principle Enforces a shared-access model where all authenticated users are trusted operators.
-     */
+    // Rules for the 'transactions' collection.
+    // Any authenticated user can manage financial records.
     match /transactions/{transactionId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow read, write: if isSignedIn();
+    }
+    
+    // Rules for the 'products' collection.
+    // Any authenticated user can manage the product inventory.
+    match /products/{productId} {
+        allow read, write: if isSignedIn();
+    }
+
+    // Rules for the 'serviceOrders' collection.
+    // Any authenticated user can manage service orders.
+    match /serviceOrders/{serviceOrderId} {
+        allow read, write: if isSignedIn();
     }
   }
 }

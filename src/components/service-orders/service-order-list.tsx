@@ -40,6 +40,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useReactToPrint } from 'react-to-print';
+import { Timestamp } from 'firebase/firestore';
 
 import type { ServiceOrder, ServiceOrderStatus as ServiceOrderStatusType, Client, TransactionOwner } from '@/lib/definitions';
 import { ServiceOrderForm } from './service-order-form';
@@ -139,7 +140,7 @@ export function ServiceOrderList({
         amount: osToFinalize.finalValue,
         clientId: osToFinalize.clientId,
         clientName: osToFinalize.clientName,
-        date: new Date().toISOString(),
+        date: new Date(),
         owner: 'split' as TransactionOwner,
     };
 
@@ -150,7 +151,6 @@ export function ServiceOrderList({
             title: "Sucesso!",
             description: `Lançamento de R$ ${osToFinalize.finalValue.toFixed(2)} para a OS ${osToFinalize.id} criado.`,
         });
-        window.dispatchEvent(new Event('local-storage-changed'));
     } else {
         toast({
             variant: "destructive",
@@ -161,9 +161,11 @@ export function ServiceOrderList({
     setOsToFinalize(null);
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (date: unknown) => {
+    if (!date) return "Data inválida";
     try {
-      return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+        const d = (date as Timestamp)?.toDate ? (date as Timestamp).toDate() : new Date(date as string);
+        return format(d, "dd/MM/yyyy", { locale: ptBR });
     } catch {
       return "Data inválida";
     }
@@ -205,7 +207,7 @@ export function ServiceOrderList({
                 const orderWithCpf = { ...os, clientCpf: client?.cpf };
                 return (
                   <TableRow key={os.id}>
-                    <TableCell className="font-bold hidden sm:table-cell">{os.id}</TableCell>
+                    <TableCell className="font-bold hidden sm:table-cell">{os.id.substring(0, 8)}</TableCell>
                     <TableCell className="font-medium">
                       <div className='flex flex-col'>
                         <span className="font-semibold">{os.clientName}</span>

@@ -3,6 +3,9 @@
 import { z } from 'zod';
 import type { ServiceOrder, ServiceOrderItem } from '@/lib/definitions';
 import { ServiceOrderStatus } from '@/lib/definitions';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const serviceOrderItemSchema = z.object({
   id: z.string(),
@@ -18,7 +21,7 @@ const serviceOrderSchema = z.object({
   problemDescription: z.string().optional(),
   status: z.enum(ServiceOrderStatus),
   notes: z.string().optional(),
-  entryDate: z.string(), // Garante que a data está presente
+  entryDate: z.string(),
   items: z.array(serviceOrderItemSchema).min(1, 'Adicione pelo menos um item de serviço.'),
 });
 
@@ -27,54 +30,6 @@ type ActionResponse = {
   message?: string;
   data?: any;
 };
-
-const getServiceOrdersFromStorage = (): ServiceOrder[] => {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem('serviceOrders');
-  // Simple migration for old orders without items
-  try {
-    const orders: ServiceOrder[] = stored ? JSON.parse(stored) : [];
-    return orders.map(order => {
-        if (!order.items && order.finalValue) {
-            return {
-                ...order,
-                items: [{
-                    id: 'default-item',
-                    description: `${order.equipment} - ${order.problemDescription || 'Serviço Geral'}`,
-                    quantity: 1,
-                    unitPrice: order.finalValue
-                }]
-            }
-        }
-        return order;
-    });
-  } catch(e) {
-      return [];
-  }
-};
-
-const saveServiceOrdersToStorage = (orders: ServiceOrder[]) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('serviceOrders', JSON.stringify(orders));
-  window.dispatchEvent(new Event('local-storage-changed'));
-};
-
-
-export function getServiceOrders(query: string): ServiceOrder[] {
-  let serviceOrders = getServiceOrdersFromStorage();
-
-  if (!query) {
-    return serviceOrders.sort((a,b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
-  }
-
-  const lowercasedQuery = query.toLowerCase();
-  return serviceOrders.filter(
-    (os) =>
-      os.clientName.toLowerCase().includes(lowercasedQuery) ||
-      os.equipment.toLowerCase().includes(lowercasedQuery) ||
-      os.id.toLowerCase().includes(lowercasedQuery)
-  ).sort((a,b) => new Date(b.entryDate).getTime() - new Date(a.entryDate).getTime());
-}
 
 const calculateFinalValue = (items: ServiceOrderItem[] = []) => {
     return items.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
@@ -90,22 +45,21 @@ export function addServiceOrder(
     return { success: false, message: 'Dados inválidos.' };
   }
   
-  let serviceOrders = getServiceOrdersFromStorage();
+  try {
+    const finalValue = calculateFinalValue(validation.data.items);
 
-  const existingIds = serviceOrders.map(o => parseInt(o.id.split('-')[1] || '0', 10));
-  const newIdNumber = (existingIds.length > 0 ? Math.max(...existingIds) : 0) + 1;
-  
-  const finalValue = calculateFinalValue(validation.data.items);
+    const newServiceOrder: Omit<ServiceOrder, 'id'> = {
+      ...validation.data,
+      finalValue,
+      createdAt: serverTimestamp(),
+    } as unknown as Omit<ServiceOrder, 'id'>;
 
-  const newServiceOrder: ServiceOrder = {
-    id: `OS-${newIdNumber}`,
-    ...validation.data,
-    finalValue,
-  };
+    addDocumentNonBlocking(collection(db, 'serviceOrders'), newServiceOrder);
 
-  serviceOrders.unshift(newServiceOrder);
-  saveServiceOrdersToStorage(serviceOrders);
-  return { success: true, message: 'Ordem de Serviço adicionada com sucesso.', data: newServiceOrder };
+    return { success: true, message: 'Ordem de Serviço adicionada com sucesso.' };
+  } catch(e:any) {
+    return { success: false, message: e.message || "Erro ao criar OS." }
+  }
 }
 
 export function updateServiceOrder(
@@ -113,34 +67,24 @@ export function updateServiceOrder(
   data: Partial<z.infer<typeof serviceOrderSchema>>
 ): ActionResponse {
   
-  let serviceOrders = getServiceOrdersFromStorage();
-  const osIndex = serviceOrders.findIndex((o) => o.id === id);
-  if (osIndex === -1) {
-    return { success: false, message: 'Ordem de Serviço não encontrada.' };
-  }
-
-  const existingData = serviceOrders[osIndex];
-  
-  const combinedData = { 
-      ...existingData, 
-      ...data,
-    };
-  
-  const validation = serviceOrderSchema.safeParse(combinedData);
+  const validation = serviceOrderSchema.partial().safeParse(data);
   if (!validation.success) {
     console.error(validation.error.flatten());
     return { success: false, message: 'Dados de atualização inválidos.' };
   }
 
-  const finalValue = calculateFinalValue(validation.data.items);
+  try {
+    const osRef = doc(db, 'serviceOrders', id);
+    let dataToUpdate = { ...validation.data };
 
-  const updatedOrder: ServiceOrder = {
-      ...existingData,
-      ...validation.data,
-      finalValue
+    if(data.items) {
+        (dataToUpdate as any).finalValue = calculateFinalValue(data.items);
+    }
+    
+    updateDocumentNonBlocking(osRef, dataToUpdate);
+
+    return { success: true, message: 'Ordem de Serviço atualizada com sucesso.' };
+  } catch(e: any) {
+    return { success: false, message: e.message || 'Ocorreu um erro ao atualizar a OS.' };
   }
-
-  serviceOrders[osIndex] = updatedOrder;
-  saveServiceOrdersToStorage(serviceOrders);
-  return { success: true, message: 'Ordem de Serviço atualizada com sucesso.', data: updatedOrder };
 }

@@ -3,47 +3,44 @@
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClientList } from '@/components/clients/client-list';
-import { getClients } from './actions';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client } from '@/lib/definitions';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 function ClientsPageContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('query') || '';
-  const [clients, setClients] = React.useState<Client[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const queryParam = searchParams.get('query') || '';
+  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
 
-  const fetchClients = React.useCallback(() => {
-    setLoading(true);
-    const clientData = getClients(query);
-    setClients(clientData);
-    setLoading(false);
-  }, [query]);
+  const clientsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'clients'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
 
+  const { data: allClients, isLoading: clientsLoading } = useCollection<Client>(clientsQuery);
 
-  // Listen for storage changes to update UI
-  React.useEffect(() => {
-    fetchClients();
-    
-    const handleStorageChange = () => {
-      fetchClients();
-    };
+  const filteredClients = React.useMemo(() => {
+    if (!allClients) return [];
+    if (!queryParam) return allClients;
+    const lowercasedQuery = queryParam.toLowerCase();
+    return allClients.filter(
+      (client) =>
+        client.name.toLowerCase().includes(lowercasedQuery) ||
+        (client.cpf && client.cpf.includes(lowercasedQuery))
+    );
+  }, [allClients, queryParam]);
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-storage-changed', handleStorageChange); // Custom event
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('local-storage-changed', handleStorageChange);
-    };
-  }, [query, fetchClients]);
-  
-  if (loading) {
+  const isLoading = isUserLoading || clientsLoading;
+
+  if (isLoading) {
     return <Skeleton className="h-96 w-full" />;
   }
 
-  return <ClientList initialClients={clients} />;
+  return <ClientList initialClients={filteredClients} />;
 }
 
 
