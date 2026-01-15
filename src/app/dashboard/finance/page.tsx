@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { deleteTransaction } from './actions';
-import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users, Printer } from 'lucide-react';
+import { PlusCircle, Edit, MoreHorizontal, Trash2, User, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,17 +51,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { Client } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
-import { useReactToPrint } from 'react-to-print';
-import { PrintableFinancialReport } from '@/components/finance/printable-financial-report';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { useMemoFirebase, useFirestore, useUser } from '@/firebase';
-
-interface FinancialSummary {
-  revenue: number;
-  expenses: number;
-  profit: number;
-}
 
 export default function FinancePage() {
   const { isUserLoading } = useUser();
@@ -76,13 +68,6 @@ export default function FinancePage() {
   const [endDate, setEndDate] = React.useState('');
 
   const { toast } = useToast();
-  
-  const reportRef = React.useRef<HTMLDivElement>(null);
-  
-  const handlePrint = useReactToPrint({
-    content: () => reportRef.current,
-    documentTitle: `Relatorio-Financeiro-${startDate || 'inicio'}-ate-${endDate || 'fim'}`,
-  });
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -121,16 +106,6 @@ export default function FinancePage() {
       return transactionDate >= start && transactionDate <= end;
     });
   }, [allTransactions, startDate, endDate]);
-
-  const periodSummary = React.useMemo(() => {
-    let revenue = 0;
-    let expenses = 0;
-    filteredTransactions.forEach(t => {
-      if (t.type === 'income') revenue += t.amount;
-      else expenses += t.amount;
-    });
-    return { revenue, expenses, profit: revenue - expenses };
-  }, [filteredTransactions]);
 
   const chartData = React.useMemo(() => {
     const grouped: Record<string, { income: number, expense: number }> = {};
@@ -271,17 +246,6 @@ export default function FinancePage() {
                 />
               </div>
             </div>
-             <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button onClick={handlePrint} variant="outline" size="icon">
-                        <Printer className="h-4 w-4" />
-                        <span className="sr-only">Imprimir Relatório</span>
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Imprimir Relatório</p>
-                </TooltipContent>
-            </Tooltip>
           </div>
           <Button onClick={openFormForNew} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -434,17 +398,6 @@ export default function FinancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      <div style={{ position: 'absolute', left: '-9999px' }}>
-        <PrintableFinancialReport 
-          ref={reportRef} 
-          transactions={filteredTransactions} 
-          summary={periodSummary}
-          startDate={startDate}
-          endDate={endDate}
-        />
-      </div>
-
     </TooltipProvider>
   );
 }
